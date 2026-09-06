@@ -14,8 +14,10 @@
     "react-dom": "19.2.8"
   },
   "devDependencies": {
+    "@gravity-ui/icons": "^2.22.0",
     "@tailwindcss/postcss": "^4",
     "babel-plugin-react-compiler": "1.0.0",
+    "daisyui": "^5.7.28",
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
     "tailwindcss": "^4"
