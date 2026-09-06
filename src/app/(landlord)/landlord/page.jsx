@@ -1,13 +1,25 @@
+import { readFileSync } from "fs";
+import { join } from "path";
+import LandlordDashboardClient from "./LandlordDashboardClient";
+
 export const metadata = {
   title: "Landlord Dashboard | BashaVara",
+  description: "Manage your listings and student requests",
 };
 
+// Load mock data at render time (server component)
+const mockData = JSON.parse(
+  readFileSync(join(process.cwd(), "public", "data.json"), "utf-8")
+);
+
 export default async function LandlordDashboardPage() {
-  // TODO: fetch landlord data
+  const { currentLandlord, landlordListings, landlordRequests } = mockData;
+
   return (
-    <main className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold">Landlord Dashboard</h1>
-      {/* TODO: listing table, requests, stats */}
-    </main>
+    <LandlordDashboardClient
+      currentLandlord={currentLandlord}
+      initialListings={landlordListings}
+      initialRequests={landlordRequests}
+    />
   );
 }

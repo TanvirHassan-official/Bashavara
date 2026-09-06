@@ -93,7 +93,7 @@ export default function LandlordDashboardClient({
               </div>
             </div>
             <Link
-              href="/landlord-create-listing"
+              href="/landlord/listings/new"
               className="inline-flex items-center gap-2 px-5 py-3 bg-orange-500 text-white text-sm font-semibold rounded-xl hover:bg-orange-600 transition-colors shadow-sm shadow-orange-100"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -258,7 +258,7 @@ function ListingsTab({ listings, onToggleStatus, onDelete }) {
           Create your first listing to start receiving student inquiries.
         </p>
         <Link
-          href="/landlord-create-listing"
+          href="/landlord/listings/new"
           className="px-5 py-2.5 bg-orange-500 text-white text-sm font-medium rounded-xl hover:bg-orange-600 transition-colors inline-block"
         >
           Create first listing
@@ -380,7 +380,7 @@ function ListingRow({ listing, onToggleStatus, onDelete }) {
               />
               <div className="absolute right-0 mt-1 w-40 bg-white rounded-xl border border-slate-100 shadow-lg py-1 z-20">
                 <Link
-                  href={`/landlord-edit-listing?listingId=${listing.id}`}
+                  href={`/landlord/listings/${listing.id}/edit`}
                   onClick={() => setMenuOpen(false)}
                   className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 block"
                 >

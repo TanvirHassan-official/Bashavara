@@ -357,20 +357,6 @@ function FilterPanel({
         </select>
       </div>
 
-      {/* Type */}
-      <div>
-        <p className="text-sm font-medium text-slate-700 mb-3">Type</p>
-        <div className="flex flex-wrap gap-2">
-          {["Any", "Studio", "1BR", "2BR+"].map((type) => (
-            <button
-              key={type}
-              className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-600 hover:border-orange-300 hover:text-orange-600 transition-colors"
-            >
-              {type}
-            </button>
-          ))}
-        </div>
-      </div>
 
       {/* Amenities */}
       <div>
@@ -392,11 +378,10 @@ function FilterPanel({
               <button
                 key={amenity}
                 onClick={() => toggleAmenity(amenity)}
-                className={`px-3 py-1.5 text-xs rounded-full border transition-all duration-150 ${
-                  active
+                className={`px-3 py-1.5 text-xs rounded-full border transition-all duration-150 ${active
                     ? "bg-orange-500 border-orange-500 text-white font-medium shadow-sm"
                     : "border-slate-200 text-slate-600 hover:border-orange-300 hover:text-orange-600 bg-white"
-                }`}
+                  }`}
               >
                 {amenity}
               </button>

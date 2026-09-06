@@ -69,7 +69,7 @@ export default function RegisterForm({ initialRole = "student" }) {
     // TODO: replace with a real call to the Express /api/auth/register endpoint via BetterAuth
     setTimeout(() => {
       setLoading(false);
-      router.push(isLandlord ? "/landlord-dashboard" : "/listings");
+      router.push(isLandlord ? "/landlord" : "/listings");
     }, 1100);
   }
 

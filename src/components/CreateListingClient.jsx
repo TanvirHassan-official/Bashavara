@@ -146,7 +146,7 @@ export default function CreateListingClient({ editListing }) {
           </p>
           <div className="flex flex-col gap-3">
             <Link
-              href="/landlord-dashboard"
+              href="/landlord"
               className="w-full py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors inline-block"
             >
               Back to dashboard
@@ -175,7 +175,7 @@ export default function CreateListingClient({ editListing }) {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => router.push("/landlord-dashboard")}
+              onClick={() => router.push("/landlord")}
               className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"
             >
               <svg
@@ -501,7 +501,7 @@ export default function CreateListingClient({ editListing }) {
             <div className="flex gap-3 shrink-0">
               <button
                 type="button"
-                onClick={() => router.push("/landlord-dashboard")}
+                onClick={() => router.push("/landlord")}
                 className="px-5 py-2.5 border border-slate-200 text-slate-600 rounded-xl text-sm hover:bg-slate-50 transition-colors"
               >
                 Cancel

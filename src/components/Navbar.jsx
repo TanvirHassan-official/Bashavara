@@ -29,7 +29,8 @@ export default function Navbar() {
   ];
 
   const landlordLinks = [
-    { label: "My Listings", href: "/landlord" },
+    { label: "New Listing", href: "/landlord/listings/new" },
+    { label: "Dashboard", href: "/landlord" },
   ];
 
   const navLinks = isLandlord ? landlordLinks : studentLinks;
@@ -67,11 +68,10 @@ export default function Navbar() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  pathname === link.href
-                    ? "bg-orange-50 text-orange-600"
-                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-                }`}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${pathname === link.href
+                  ? "bg-orange-50 text-orange-600"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                  }`}
               >
                 {link.label}
               </Link>
@@ -110,9 +110,8 @@ export default function Navbar() {
                   className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors"
                 >
                   <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold ${
-                      isLandlord ? "bg-slate-800" : "bg-orange-500"
-                    }`}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold ${isLandlord ? "bg-slate-800" : "bg-orange-500"
+                      }`}
                   >
                     {initials}
                   </div>
@@ -265,11 +264,10 @@ export default function Navbar() {
                 key={link.href}
                 href={link.href}
                 onClick={() => setMenuOpen(false)}
-                className={`block w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                  pathname === link.href
-                    ? "bg-orange-50 text-orange-600"
-                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-                }`}
+                className={`block w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${pathname === link.href
+                  ? "bg-orange-50 text-orange-600"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                  }`}
               >
                 {link.label}
               </Link>
