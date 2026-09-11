@@ -1,4 +1,17 @@
-import { apiFetchClient } from "./api-client";
+/**
+ * Lightweight fetch wrapper (previously in api-client.js).
+ */
+async function apiFetchClient(url, options = {}) {
+  const res = await fetch(url, {
+    headers: { "Content-Type": "application/json", ...options.headers },
+    ...options,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || res.statusText);
+  }
+  return res.json();
+}
 
 /**
  * Login with email + password.
