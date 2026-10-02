@@ -73,6 +73,9 @@ export default function RegisterForm({ initialRole = "student" }) {
       email,
       password,
       name,
+      role,
+      phone: isLandlord ? phone : undefined,
+      businessName: isLandlord ? businessName : undefined,
     });
 
     if (error) {
