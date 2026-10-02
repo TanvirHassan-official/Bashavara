@@ -5,22 +5,44 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import StarRating from "@/components/StarRating";
 import { useSession } from "@/hooks/useSession";
+import { api } from "@/lib/api";
 
-export default function ListingDetailClient({ listing, reviews, avgRating }) {
+export default function ListingDetailClient({ listing, reviews: initialReviews = [], avgRating: initialAvg = 0 }) {
   const router = useRouter();
   const { session } = useSession();
+  const [reviewsList, setReviewsList] = useState(initialReviews);
+  const [avgRating, setAvgRating] = useState(initialAvg);
   const [requestSent, setRequestSent] = useState(false);
+  const [requestLoading, setRequestLoading] = useState(false);
+  const [requestError, setRequestError] = useState(null);
+
   const [showReviewForm, setShowReviewForm] = useState(false);
-  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState("");
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [reviewError, setReviewError] = useState(null);
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
 
-  function handleRequest() {
+  async function handleRequest() {
     if (!session?.user) {
       router.push("/login");
       return;
     }
-    setRequestSent(true);
+    setRequestLoading(true);
+    setRequestError(null);
+    try {
+      await api.post("/api/requests", {
+        receiverId: listing.landlordId,
+        listingId: listing.id,
+        type: "listing",
+        message: `Hello, I am interested in viewing or applying for ${listing.title}.`,
+      });
+      setRequestSent(true);
+    } catch (err) {
+      setRequestError(err.message || "Failed to send request. Please try again.");
+    } finally {
+      setRequestLoading(false);
+    }
   }
 
   function handleOpenReviewForm() {
@@ -31,14 +53,46 @@ export default function ListingDetailClient({ listing, reviews, avgRating }) {
     setShowReviewForm(true);
   }
 
-  function handleReviewSubmit(e) {
+  async function handleReviewSubmit(e) {
     e.preventDefault();
     if (!session?.user) {
       router.push("/login");
       return;
     }
-    setReviewSubmitted(true);
-    setShowReviewForm(false);
+    if (reviewRating < 1) {
+      setReviewError("Please select a rating of at least 1 star.");
+      return;
+    }
+    setReviewLoading(true);
+    setReviewError(null);
+    try {
+      await api.post(`/api/listings/${listing.id}/reviews`, {
+        rating: reviewRating,
+        comment: reviewComment,
+      });
+
+      const newReview = {
+        id: `rev_${Date.now()}`,
+        rating: reviewRating,
+        comment: reviewComment,
+        reviewerId: session.user.id,
+        reviewerName: session.user.name || "Student",
+        createdAt: new Date().toISOString(),
+      };
+
+      const updated = [newReview, ...reviewsList];
+      setReviewsList(updated);
+      const newAvg = updated.reduce((s, r) => s + r.rating, 0) / updated.length;
+      setAvgRating(Number(newAvg.toFixed(1)));
+
+      setReviewSubmitted(true);
+      setShowReviewForm(false);
+      setReviewComment("");
+    } catch (err) {
+      setReviewError(err.message || "Failed to submit review.");
+    } finally {
+      setReviewLoading(false);
+    }
   }
 
   return (
@@ -234,15 +288,18 @@ export default function ListingDetailClient({ listing, reviews, avgRating }) {
               </div>
             </div>
 
-            {/* Reviews */}
+              {/* Reviews */}
             <div className="bg-white rounded-2xl border border-slate-100 p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="font-heading font-semibold text-slate-900 text-lg">
-                  Reviews {reviews.length > 0 && `(${reviews.length})`}
+                  Reviews {reviewsList.length > 0 && `(${reviewsList.length})`}
                 </h2>
                 {!reviewSubmitted && (
                   <button
-                    onClick={() => setShowReviewForm(!showReviewForm)}
+                    onClick={() => {
+                      if (!showReviewForm) handleOpenReviewForm();
+                      else setShowReviewForm(false);
+                    }}
                     className="text-sm text-orange-500 hover:text-orange-600 font-medium transition-colors"
                   >
                     {showReviewForm ? "Cancel" : "Write a review"}
@@ -261,6 +318,11 @@ export default function ListingDetailClient({ listing, reviews, avgRating }) {
                   onSubmit={handleReviewSubmit}
                   className="bg-orange-50 rounded-xl p-5 mb-6 space-y-4"
                 >
+                  {reviewError && (
+                    <div className="bg-red-50 border border-red-200 text-red-600 text-xs rounded-lg p-3">
+                      {reviewError}
+                    </div>
+                  )}
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-2">
                       Your rating
@@ -287,15 +349,15 @@ export default function ListingDetailClient({ listing, reviews, avgRating }) {
                   </div>
                   <button
                     type="submit"
-                    disabled={reviewRating === 0}
+                    disabled={reviewLoading || reviewRating === 0}
                     className="px-5 py-2.5 bg-orange-500 text-white rounded-xl text-sm font-medium hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Submit review
+                    {reviewLoading ? "Submitting..." : "Submit review"}
                   </button>
                 </form>
               )}
 
-              {reviews.length === 0 ? (
+              {reviewsList.length === 0 ? (
                 <div className="text-center py-10 text-slate-400">
                   <p className="text-sm">
                     No reviews yet. Be the first to share your experience.
@@ -303,7 +365,7 @@ export default function ListingDetailClient({ listing, reviews, avgRating }) {
                 </div>
               ) : (
                 <div className="space-y-5">
-                  {reviews.map((review) => (
+                  {reviewsList.map((review) => (
                     <div
                       key={review.id}
                       className="border-b border-slate-50 pb-5 last:border-0 last:pb-0"
@@ -311,14 +373,14 @@ export default function ListingDetailClient({ listing, reviews, avgRating }) {
                       <div className="flex items-start justify-between gap-3 mb-2">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 bg-orange-100 rounded-full flex items-center justify-center text-orange-600 text-sm font-semibold font-heading">
-                            {review.reviewerName
+                            {(review.reviewerName || "S")
                               .split(" ")
                               .map((n) => n[0])
                               .join("")}
                           </div>
                           <div>
                             <p className="text-sm font-semibold text-slate-800">
-                              {review.reviewerName}
+                              {review.reviewerName || "Verified Student"}
                             </p>
                             <p className="text-xs text-slate-400">
                               {new Date(review.createdAt).toLocaleDateString(
@@ -346,14 +408,14 @@ export default function ListingDetailClient({ listing, reviews, avgRating }) {
             <div className="bg-white rounded-2xl border border-slate-100 p-6 sticky top-20">
               <div className="flex items-center gap-3 mb-5 pb-5 border-b border-slate-50">
                 <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center text-orange-600 font-semibold font-heading text-sm">
-                  {listing.posterName
+                  {(listing.posterName || "L")
                     .split(" ")
                     .map((n) => n[0])
                     .join("")}
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-slate-800">
-                    {listing.posterName}
+                    {listing.posterName || listing.businessName || "Property Manager"}
                   </p>
                   <p className="text-xs text-slate-400">Listing posted by</p>
                 </div>
@@ -380,7 +442,7 @@ export default function ListingDetailClient({ listing, reviews, avgRating }) {
                     Request sent!
                   </p>
                   <p className="text-xs text-slate-500">
-                    {listing.posterName} will review your request. You will be
+                    {listing.posterName || "The landlord"} will review your request. You will be
                     notified once they respond.
                   </p>
                   <Link
@@ -392,11 +454,27 @@ export default function ListingDetailClient({ listing, reviews, avgRating }) {
                 </div>
               ) : (
                 <>
+                  {requestError && (
+                    <div className="bg-red-50 border border-red-200 text-red-600 text-xs rounded-xl p-3 mb-3">
+                      {requestError}
+                    </div>
+                  )}
                   <button
                     onClick={handleRequest}
-                    className="w-full py-3.5 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors shadow-sm shadow-orange-100 mb-3"
+                    disabled={requestLoading}
+                    className="w-full py-3.5 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors shadow-sm shadow-orange-100 mb-3 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
-                    Request Contact
+                    {requestLoading ? (
+                      <>
+                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                        Sending Request...
+                      </>
+                    ) : (
+                      "Request Contact"
+                    )}
                   </button>
                   <p className="text-xs text-slate-400 text-center">
                     Contact info is shared once your request is accepted

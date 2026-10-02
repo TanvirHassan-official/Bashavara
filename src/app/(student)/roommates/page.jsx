@@ -1,18 +1,12 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
-import { readFileSync } from "fs";
-import { join } from "path";
+import { api } from "@/lib/api";
 import RoommatesClient from "./RoommatesClient";
 
 export const metadata = {
   title: "Roommates | BashaVara",
   description: "Find compatible roommates based on budget, sleep schedule, and lifestyle preferences",
 };
-
-// Load mock data at render time (server component)
-const mockData = JSON.parse(
-  readFileSync(join(process.cwd(), "public", "data.json"), "utf-8")
-);
 
 export default async function RoommatesPage() {
   const sessionData = await getSession();
@@ -21,15 +15,36 @@ export default async function RoommatesPage() {
     redirect("/login");
   }
 
-  const { currentUser, users } = mockData;
-
-  // Use session user information merged with preferences
-  const activeStudent = {
-    ...currentUser,
+  let profile = {
     id: sessionData.user.id,
-    name: sessionData.user.name || currentUser.name,
-    email: sessionData.user.email || currentUser.email,
+    name: sessionData.user.name || "Student",
+    email: sessionData.user.email,
+    budget: 1200,
+    department: "Computer Science",
+    sleepSchedule: "Flexible",
+    smokingPreference: "Non-Smoker",
+    bio: "",
   };
 
-  return <RoommatesClient currentUser={activeStudent} users={users} />;
+  let candidates = [];
+
+  try {
+    const [profileRes, roommatesRes] = await Promise.all([
+      api.get("/api/me/profile"),
+      api.get("/api/roommates"),
+    ]);
+
+    if (profileRes.profile) {
+      profile = {
+        ...profile,
+        ...profileRes.profile,
+      };
+    }
+
+    candidates = roommatesRes.roommates || [];
+  } catch (err) {
+    console.error("Failed to load roommate data:", err.message);
+  }
+
+  return <RoommatesClient currentUser={profile} users={candidates} />;
 }

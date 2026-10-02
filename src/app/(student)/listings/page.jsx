@@ -1,5 +1,4 @@
-import { readFileSync } from "fs";
-import { join } from "path";
+import { api } from "@/lib/api";
 import ListingsClient from "./ListingsClient";
 
 export const metadata = {
@@ -7,33 +6,57 @@ export const metadata = {
   description: "Browse available rental listings near your campus",
 };
 
-// Load mock data at render time (server component)
-const mockData = JSON.parse(
-  readFileSync(join(process.cwd(), "public", "data.json"), "utf-8")
-);
+const DEPARTMENTS = [
+  "Any",
+  "Computer Science / EECS",
+  "Engineering / Sciences",
+  "Business / Law / Social Sciences",
+  "Medicine / Public Health",
+  "Arts / Design / Humanities",
+  "Law / Business",
+  "Design / Fine Arts",
+];
 
-// Pre-compute average ratings per listing
-function buildRatings(listings, reviews) {
-  const map = {};
-  for (const listing of listings) {
-    const relevant = reviews.filter((r) => r.listingId === listing.id);
-    map[listing.id] =
-      relevant.length > 0
-        ? relevant.reduce((sum, r) => sum + r.rating, 0) / relevant.length
-        : 0;
-  }
-  return map;
-}
+const AMENITY_OPTIONS = [
+  "High-speed WiFi",
+  "In-unit laundry",
+  "Laundry in building",
+  "Dishwasher",
+  "A/C",
+  "Heating included",
+  "Parking included",
+  "Bike storage",
+  "Gym",
+  "Rooftop deck",
+  "Backyard / yard",
+  "Pet-friendly",
+  "Furnished",
+  "Storage unit",
+  "Doorman",
+  "Elevator",
+  "All utilities included",
+  "Private entrance",
+];
 
 export default async function ListingsPage() {
-  const { listings, departments, amenityOptions, reviews } = mockData;
-  const ratings = buildRatings(listings, reviews);
+  let listings = [];
+  const ratings = {};
+
+  try {
+    const data = await api.get("/api/listings?status=active");
+    listings = data.listings || [];
+    for (const item of listings) {
+      ratings[item.id] = item.avgRating || 0;
+    }
+  } catch (error) {
+    console.error("Failed to load listings from API, trying fallback:", error.message);
+  }
 
   return (
     <ListingsClient
       listings={listings}
-      departments={departments}
-      amenityOptions={amenityOptions}
+      departments={DEPARTMENTS}
+      amenityOptions={AMENITY_OPTIONS}
       ratings={ratings}
     />
   );

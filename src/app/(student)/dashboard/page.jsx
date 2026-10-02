@@ -1,18 +1,12 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
-import { readFileSync } from "fs";
-import { join } from "path";
+import { api } from "@/lib/api";
 import DashboardClient from "./DashboardClient";
 
 export const metadata = {
   title: "Dashboard | BashaVara",
   description: "Your student dashboard",
 };
-
-// Load mock data at render time (server component)
-const mockData = JSON.parse(
-  readFileSync(join(process.cwd(), "public", "data.json"), "utf-8")
-);
 
 export default async function DashboardPage() {
   const sessionData = await getSession();
@@ -25,7 +19,26 @@ export default async function DashboardPage() {
     redirect("/landlord");
   }
 
-  const { requests } = mockData;
+  let incomingRequests = [];
+  let outgoingRequests = [];
 
-  return <DashboardClient requests={requests} currentUser={sessionData.user} />;
+  try {
+    const [incomingRes, outgoingRes] = await Promise.all([
+      api.get("/api/requests/incoming"),
+      api.get("/api/requests/outgoing"),
+    ]);
+
+    incomingRequests = incomingRes.requests || [];
+    outgoingRequests = outgoingRes.requests || [];
+  } catch (error) {
+    console.error("Failed to load dashboard requests:", error.message);
+  }
+
+  return (
+    <DashboardClient
+      incomingRequests={incomingRequests}
+      outgoingRequests={outgoingRequests}
+      currentUser={sessionData.user}
+    />
+  );
 }

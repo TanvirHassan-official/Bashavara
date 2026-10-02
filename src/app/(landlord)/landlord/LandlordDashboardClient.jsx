@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import StarRating from "@/components/StarRating";
+import { api } from "@/lib/api";
 
 const STATUS_BADGE = {
   active: "bg-green-50 text-green-600 border-green-200",
@@ -11,23 +12,26 @@ const STATUS_BADGE = {
 };
 
 const REQ_BADGE = {
+  pending: "bg-amber-50 text-amber-600 border-amber-200",
+  accepted: "bg-green-50 text-green-600 border-green-200",
+  rejected: "bg-red-50 text-red-500 border-red-200",
   Pending: "bg-amber-50 text-amber-600 border-amber-200",
   Accepted: "bg-green-50 text-green-600 border-green-200",
   Rejected: "bg-red-50 text-red-500 border-red-200",
 };
 
 const REQ_ICONS = {
-  Pending: (
+  pending: (
     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   ),
-  Accepted: (
+  accepted: (
     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
     </svg>
   ),
-  Rejected: (
+  rejected: (
     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
     </svg>
@@ -36,31 +40,72 @@ const REQ_ICONS = {
 
 export default function LandlordDashboardClient({
   currentLandlord,
-  initialListings,
-  initialRequests,
+  initialListings = [],
+  initialRequests = [],
 }) {
   const [tab, setTab] = useState("listings");
   const [listings, setListings] = useState(initialListings);
   const [requests, setRequests] = useState(initialRequests);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [actionError, setActionError] = useState(null);
 
-  const activeCount = listings.filter((l) => l.listingStatus === "active").length;
-  const pendingRequests = requests.filter((r) => r.status === "Pending").length;
-  const acceptedCount = requests.filter((r) => r.status === "Accepted").length;
+  const activeCount = listings.filter((l) => (l.status || l.listingStatus) === "active").length;
+  const pendingRequests = requests.filter((r) => (r.status || "").toLowerCase() === "pending").length;
+  const acceptedCount = requests.filter((r) => (r.status || "").toLowerCase() === "accepted").length;
 
-  function toggleListingStatus(id, status) {
-    setListings((prev) =>
-      prev.map((l) => (l.id === id ? { ...l, listingStatus: status } : l))
-    );
+  async function toggleListingStatus(id, newStatus) {
+    setActionLoading(true);
+    setActionError(null);
+    try {
+      await api.patch(`/api/listings/${id}/status`, { status: newStatus });
+      setListings((prev) =>
+        prev.map((l) => (l.id === id ? { ...l, status: newStatus, listingStatus: newStatus } : l))
+      );
+    } catch (err) {
+      setActionError(err.message || "Failed to update listing status.");
+    } finally {
+      setActionLoading(false);
+    }
   }
 
-  function deleteListing(id) {
-    setListings((prev) => prev.filter((l) => l.id !== id));
-    setDeleteConfirm(null);
+  async function deleteListing(id) {
+    setActionLoading(true);
+    setActionError(null);
+    try {
+      await api.delete(`/api/listings/${id}`);
+      setListings((prev) => prev.filter((l) => l.id !== id));
+      setDeleteConfirm(null);
+    } catch (err) {
+      setActionError(err.message || "Failed to delete listing.");
+    } finally {
+      setActionLoading(false);
+    }
   }
 
-  function updateRequestStatus(id, status) {
-    setRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
+  async function updateRequestStatus(id, newStatus) {
+    setActionLoading(true);
+    setActionError(null);
+    try {
+      const res = await api.patch(`/api/requests/${id}`, { status: newStatus });
+      const updatedData = res.request;
+
+      setRequests((prev) =>
+        prev.map((r) =>
+          r.id === id
+            ? {
+                ...r,
+                status: newStatus,
+                senderEmail: updatedData?.senderEmail || r.senderEmail,
+              }
+            : r
+        )
+      );
+    } catch (err) {
+      setActionError(err.message || "Failed to update request.");
+    } finally {
+      setActionLoading(false);
+    }
   }
 
   const requestsByListing = listings.map((l) => ({
@@ -68,7 +113,7 @@ export default function LandlordDashboardClient({
     reqs: requests.filter((r) => r.listingId === l.id),
   }));
 
-  const initials = currentLandlord.name
+  const initials = (currentLandlord?.name || "L")
     .split(" ")
     .map((n) => n[0])
     .join("");

@@ -1,11 +1,6 @@
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
-import { readFileSync } from "fs";
-import { join } from "path";
-
-const mockData = JSON.parse(
-  readFileSync(join(process.cwd(), "public", "data.json"), "utf-8")
-);
+import { api } from "@/lib/api";
 
 export const metadata = {
   title: "BashaVara — Student Housing Made Easy",
@@ -49,7 +44,7 @@ const FEATURES = [
       </svg>
     ),
     title: "Campus Distance Metrics",
-    desc: "Every listing shows the exact walking distance to campus — in miles — so you can find the right balance of proximity and price.",
+    desc: "Every listing shows the exact walking distance to campus so you can find the right balance of proximity and price.",
   },
   {
     icon: (
@@ -71,28 +66,38 @@ const FEATURES = [
   },
 ];
 
-const STEPS = [
-  {
-    step: "01",
-    title: "Create your profile",
-    desc: "Sign up with your .edu email and tell us your budget, department, and lifestyle preferences.",
-  },
-  {
-    step: "02",
-    title: "Browse landlord listings",
-    desc: "Landlords post verified properties with real rent, walking distance, and available dates — no student re-listings.",
-  },
-  {
-    step: "03",
-    title: "Connect & move in",
-    desc: "Send a request, get accepted, exchange contact info directly with the landlord, and secure your home.",
-  },
-];
+export default async function HomePage() {
+  let stats = {
+    activeListings: 14,
+    verifiedStudents: 8,
+    verifiedLandlords: 1,
+    averageRating: 4.8,
+    successfulMatches: 4,
+  };
+  let recentListings = [];
 
-// Use mock data from data.json for recent listings preview
-const RECENT_LISTINGS = mockData.listings.slice(0, 3);
+  try {
+    const statsRes = await api.get("/api/stats");
+    if (statsRes.stats) stats = statsRes.stats;
+  } catch (err) {
+    console.error("Failed to load stats on homepage:", err.message);
+  }
 
-export default function HomePage() {
+  try {
+    const listingsRes = await api.get("/api/listings?status=active");
+    if (listingsRes.listings) {
+      recentListings = listingsRes.listings.slice(0, 3);
+    }
+  } catch (err) {
+    console.error("Failed to load recent listings on homepage:", err.message);
+  }
+
+  const statItems = [
+    { value: `${stats.activeListings || 10}+`, label: "Active listings" },
+    { value: "0.9 mi", label: "Median walk" },
+    { value: `${stats.averageRating || 4.8}★`, label: "Avg. rating" },
+  ];
+
   return (
     <>
       <Navbar />
@@ -147,11 +152,7 @@ export default function HomePage() {
                 </div>
 
                 <dl className="mt-10 grid max-w-md grid-cols-3 gap-6">
-                  {[
-                    { value: "120+", label: "Active listings" },
-                    { value: "0.9 mi", label: "Median walk" },
-                    { value: "4.3★", label: "Avg. landlord" },
-                  ].map((stat) => (
+                  {statItems.map((stat) => (
                     <div key={stat.label}>
                       <dt className="font-heading text-2xl font-bold text-slate-900">
                         {stat.value}
@@ -168,8 +169,8 @@ export default function HomePage() {
               <div className="relative">
                 <div className="rounded-3xl overflow-hidden bg-slate-100 shadow-2xl shadow-slate-200/60">
                   <img
-                    src="/hero-housing.jpg"
-                    alt="Bright student apartment with orange accents, desk, and living area"
+                    src="https://images.unsplash.com/photo-1522708323590-d24dbb2b4e4f?w=800&h=600&fit=crop&auto=format"
+                    alt="Bright student apartment"
                     className="w-full h-full object-cover aspect-[4/3]"
                   />
                 </div>
@@ -193,7 +194,7 @@ export default function HomePage() {
                   <div>
                     <p className="text-xs text-slate-400">Student-verified</p>
                     <p className="font-heading font-bold text-slate-900 text-sm">
-                      Trusted community
+                      {stats.verifiedStudents || 8}+ Verified Students
                     </p>
                   </div>
                 </div>
@@ -238,177 +239,25 @@ export default function HomePage() {
         </section>
 
         {/* Recent listings preview */}
-        <section className="py-16 bg-slate-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-end justify-between mb-10">
-              <div>
-                <h2 className="font-heading text-3xl font-bold text-slate-900 mb-2">
-                  Recently added
-                </h2>
-                <p className="text-slate-500">
-                  Fresh listings from landlords across the network
-                </p>
-              </div>
-              <Link
-                href="/listings"
-                className="hidden sm:flex items-center gap-2 text-orange-500 font-medium hover:text-orange-600 transition-colors text-sm"
-              >
-                View all listings
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-              </Link>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-6">
-              {RECENT_LISTINGS.map((listing) => (
-                <Link
-                  key={listing.id}
-                  href={`/listings/${listing.id}`}
-                  className="group bg-white rounded-2xl border border-slate-100 overflow-hidden hover:shadow-lg hover:border-orange-200 transition-all duration-200 text-left block"
-                >
-                  <div className="relative h-44 bg-slate-100 overflow-hidden">
-                    {listing.photoUrl ? (
-                      <img
-                        src={listing.photoUrl}
-                        alt={listing.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-orange-50 to-slate-100 flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
-                        <svg
-                          className="w-10 h-10 text-slate-300"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={1.5}
-                            d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
-                          />
-                        </svg>
-                      </div>
-                    )}
-                    <div className="absolute top-3 left-3">
-                      <span className="bg-white text-slate-700 text-xs font-medium px-2.5 py-1 rounded-full shadow-sm">
-                        {listing.distance} mi to campus
-                      </span>
-                    </div>
-                  </div>
-                  <div className="p-5">
-                    <p className="font-heading font-semibold text-slate-900 text-base mb-1 group-hover:text-orange-600 transition-colors">
-                      {listing.title}
-                    </p>
-                    <p className="text-slate-400 text-xs mb-3">
-                      {listing.address}
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <span className="font-heading text-2xl font-bold text-orange-500">
-                          ${listing.rent.toLocaleString()}
-                        </span>
-                        <span className="text-slate-400 text-sm">/mo</span>
-                      </div>
-                      <span className="text-xs text-slate-400 bg-slate-50 px-2.5 py-1 rounded-full">
-                        {listing.bedrooms === 0
-                          ? "Studio"
-                          : `${listing.bedrooms}BR`}
-                      </span>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-
-            <div className="text-center mt-8 sm:hidden">
-              <Link
-                href="/listings"
-                className="px-6 py-3 border border-orange-500 text-orange-500 rounded-xl text-sm font-medium hover:bg-orange-50 transition-colors inline-block"
-              >
-                View all listings
-              </Link>
-            </div>
-          </div>
-        </section>
-
-        {/* How it works */}
-        <section className="py-24">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-16">
-              <h2 className="font-heading text-4xl font-bold text-slate-900 mb-4">
-                How it works
-              </h2>
-              <p className="text-lg text-slate-500">
-                Three steps to your next home
-              </p>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-8 relative">
-              <div className="hidden md:block absolute top-8 left-[16.67%] right-[16.67%] h-px bg-gradient-to-r from-orange-200 via-orange-300 to-orange-200" />
-              {STEPS.map((step) => (
-                <div key={step.step} className="relative text-center px-6">
-                  <div className="w-16 h-16 bg-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-orange-100">
-                    <span className="font-heading text-white font-bold text-lg">
-                      {step.step}
-                    </span>
-                  </div>
-                  <h3 className="font-heading text-xl font-semibold text-slate-900 mb-3">
-                    {step.title}
-                  </h3>
-                  <p className="text-slate-500 leading-relaxed">{step.desc}</p>
+        {recentListings.length > 0 && (
+          <section className="py-16 bg-slate-50">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex items-end justify-between mb-10">
+                <div>
+                  <h2 className="font-heading text-3xl font-bold text-slate-900 mb-2">
+                    Recently added
+                  </h2>
+                  <p className="text-slate-500">
+                    Fresh listings from landlords across the network
+                  </p>
                 </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Student CTA */}
-        <section className="py-20 bg-gradient-to-r from-orange-500 to-orange-600">
-          <div className="max-w-4xl mx-auto px-4 text-center">
-            <h2 className="font-heading text-4xl font-bold text-white mb-4">
-              Ready to find your place?
-            </h2>
-            <p className="text-orange-100 text-lg mb-10 max-w-2xl mx-auto">
-              Join thousands of students who found their home through BashaVara.
-              All you need is your .edu email.
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link
-                href="/register"
-                className="px-8 py-4 bg-white text-orange-500 rounded-xl font-semibold hover:bg-orange-50 transition-colors shadow-lg"
-              >
-                Get started — it&apos;s free
-              </Link>
-              <Link
-                href="/listings"
-                className="px-8 py-4 border-2 border-white/40 text-white rounded-xl font-semibold hover:bg-white/10 transition-colors"
-              >
-                Browse listings
-              </Link>
-            </div>
-          </div>
-        </section>
-
-        {/* Landlord CTA */}
-        <section className="py-20 bg-slate-900">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid lg:grid-cols-2 gap-12 items-center">
-              <div>
-                <span className="inline-flex items-center gap-2 bg-orange-500/20 text-orange-400 text-xs font-semibold px-3 py-1.5 rounded-full mb-6">
+                <Link
+                  href="/listings"
+                  className="hidden sm:flex items-center gap-2 text-orange-500 font-medium hover:text-orange-600 transition-colors text-sm"
+                >
+                  View all listings
                   <svg
-                    className="w-3.5 h-3.5"
+                    className="w-4 h-4"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -417,89 +266,78 @@ export default function HomePage() {
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
-                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                      d="M9 5l7 7-7 7"
                     />
                   </svg>
-                  For landlords &amp; property managers
-                </span>
-                <h2 className="font-heading text-4xl font-bold text-white leading-tight mb-5">
-                  List your property. Reach verified student renters.
-                </h2>
-                <p className="text-slate-400 text-lg leading-relaxed mb-8">
-                  BashaVara gives landlords direct access to a pre-screened
-                  community of university students. Post listings, manage
-                  inquiries, and connect — all in one place.
-                </p>
-                <div className="flex flex-wrap gap-4">
-                  <Link
-                    href="/register"
-                    className="inline-flex items-center gap-2 px-6 py-3.5 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors"
-                  >
-                    Create landlord account
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 12h14m-7-7 7 7-7 7"
-                      />
-                    </svg>
-                  </Link>
-                  <Link
-                    href="/login"
-                    className="px-6 py-3.5 border border-white/20 text-white rounded-xl font-semibold hover:bg-white/10 transition-colors"
-                  >
-                    Landlord log in
-                  </Link>
-                </div>
+                </Link>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                {[
-                  {
-                    icon: "🎯",
-                    title: "Qualified leads only",
-                    desc: "Every inquiry comes from a verified .edu student — no scammers, no wasted time.",
-                  },
-                  {
-                    icon: "📋",
-                    title: "Manage requests",
-                    desc: "Accept or decline applicants from your dashboard. Share contact info when ready.",
-                  },
-                  {
-                    icon: "⭐",
-                    title: "Build trust",
-                    desc: "Student reviews build your reputation as a reliable, responsive landlord.",
-                  },
-                  {
-                    icon: "🆓",
-                    title: "Free to list",
-                    desc: "No broker fees, no listing charges. BashaVara is free for landlords at MVP.",
-                  },
-                ].map((item) => (
-                  <div
-                    key={item.title}
-                    className="bg-white/5 border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-colors"
+              <div className="grid md:grid-cols-3 gap-6">
+                {recentListings.map((listing) => (
+                  <Link
+                    key={listing.id}
+                    href={`/listings/${listing.id}`}
+                    className="group bg-white rounded-2xl border border-slate-100 overflow-hidden hover:shadow-lg hover:border-orange-200 transition-all duration-200 text-left block"
                   >
-                    <span className="text-2xl">{item.icon}</span>
-                    <h3 className="font-heading font-semibold text-white text-sm mt-3 mb-1">
-                      {item.title}
-                    </h3>
-                    <p className="text-slate-400 text-xs leading-relaxed">
-                      {item.desc}
-                    </p>
-                  </div>
+                    <div className="relative h-44 bg-slate-100 overflow-hidden">
+                      {listing.photoUrl ? (
+                        <img
+                          src={listing.photoUrl}
+                          alt={listing.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-orange-50 to-slate-100 flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
+                          <svg
+                            className="w-10 h-10 text-slate-300"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={1.5}
+                              d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                            />
+                          </svg>
+                        </div>
+                      )}
+                      {listing.distance && (
+                        <div className="absolute top-3 left-3">
+                          <span className="bg-white text-slate-700 text-xs font-medium px-2.5 py-1 rounded-full shadow-sm">
+                            {listing.distance} to campus
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-5">
+                      <p className="font-heading font-semibold text-slate-900 text-base mb-1 group-hover:text-orange-600 transition-colors">
+                        {listing.title}
+                      </p>
+                      <p className="text-slate-400 text-xs mb-3">
+                        {listing.address}
+                      </p>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="font-heading text-2xl font-bold text-orange-500">
+                            ${Number(listing.rent).toLocaleString()}
+                          </span>
+                          <span className="text-slate-400 text-sm">/mo</span>
+                        </div>
+                        <span className="text-xs text-slate-400 bg-slate-50 px-2.5 py-1 rounded-full">
+                          {listing.bedrooms === 0
+                            ? "Studio"
+                            : `${listing.bedrooms}BR`}
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
                 ))}
               </div>
             </div>
-          </div>
-        </section>
-
+          </section>
+        )}
       </div>
     </>
   );
