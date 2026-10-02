@@ -8,7 +8,8 @@
     "start": "node index.js",
     "test:db": "node db.js",
     "generate": "@better-auth/cli generate --config ./auth.js",
-    "migrate": "node migrate.js"
+    "migrate": "node migrate.js",
+    "seed": "node seed.js"
   },
   "dependencies": {
     "better-auth": "^1.1.18",

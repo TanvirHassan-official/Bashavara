@@ -1,10 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import StarRating from "@/components/StarRating";
+import { useSession } from "@/hooks/useSession";
 
 export default function ListingDetailClient({ listing, reviews, avgRating }) {
+  const router = useRouter();
+  const { session } = useSession();
   const [requestSent, setRequestSent] = useState(false);
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [reviewRating, setReviewRating] = useState(0);
@@ -12,12 +16,27 @@ export default function ListingDetailClient({ listing, reviews, avgRating }) {
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
 
   function handleRequest() {
-    // TODO: check auth — redirect to /login if not logged in
+    if (!session?.user) {
+      router.push("/login");
+      return;
+    }
     setRequestSent(true);
+  }
+
+  function handleOpenReviewForm() {
+    if (!session?.user) {
+      router.push("/login");
+      return;
+    }
+    setShowReviewForm(true);
   }
 
   function handleReviewSubmit(e) {
     e.preventDefault();
+    if (!session?.user) {
+      router.push("/login");
+      return;
+    }
     setReviewSubmitted(true);
     setShowReviewForm(false);
   }

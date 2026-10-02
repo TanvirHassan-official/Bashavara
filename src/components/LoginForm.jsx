@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { signIn } from "@/lib/auth-client";
+import { signIn, signOut } from "@/lib/auth-client";
 
 const STUDENT_PERKS = [
   "Browse landlord-verified listings with real distances",
@@ -58,7 +58,7 @@ export default function LoginForm({ initialRole = "student" }) {
     setLoading(true);
     setErrors({});
 
-    const { error } = await signIn.email({
+    const { data, error } = await signIn.email({
       email,
       password,
     });
@@ -69,7 +69,17 @@ export default function LoginForm({ initialRole = "student" }) {
       return;
     }
 
-    router.push(isLandlord ? "/landlord" : "/listings");
+    const actualRole = data?.user?.role || "student";
+    if (actualRole !== role) {
+      await signOut();
+      setLoading(false);
+      setErrors({
+        form: `This account is registered as a ${actualRole}. Please switch to the ${actualRole} tab to log in.`,
+      });
+      return;
+    }
+
+    router.push(actualRole === "landlord" ? "/landlord" : "/listings");
     router.refresh();
   }
 

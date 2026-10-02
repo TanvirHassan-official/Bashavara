@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+import { getSession } from "@/lib/session";
 import { readFileSync } from "fs";
 import { join } from "path";
 import DashboardClient from "./DashboardClient";
@@ -13,7 +15,17 @@ const mockData = JSON.parse(
 );
 
 export default async function DashboardPage() {
+  const sessionData = await getSession();
+
+  if (!sessionData || !sessionData.user) {
+    redirect("/login");
+  }
+
+  if (sessionData.user.role === "landlord") {
+    redirect("/landlord");
+  }
+
   const { requests } = mockData;
 
-  return <DashboardClient requests={requests} />;
+  return <DashboardClient requests={requests} currentUser={sessionData.user} />;
 }

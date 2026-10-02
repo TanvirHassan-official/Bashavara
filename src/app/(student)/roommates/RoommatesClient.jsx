@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { useSession } from "@/hooks/useSession";
 
 const AVATAR_COLORS = [
   "from-orange-400 to-orange-600",
@@ -47,8 +49,14 @@ export default function RoommatesClient({ currentUser, users }) {
     [users, budget, sleep, smoking, department]
   );
 
+  const router = useRouter();
+  const { session } = useSession();
+
   function handleRequest(userId) {
-    // TODO: check auth — redirect to /login if not logged in
+    if (!session?.user) {
+      router.push("/login");
+      return;
+    }
     setRequestSent((prev) => ({ ...prev, [userId]: true }));
   }
 
