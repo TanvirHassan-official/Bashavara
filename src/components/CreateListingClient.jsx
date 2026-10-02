@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { api } from "@/lib/api";
 
 const DEPARTMENTS = [
   "Any",
@@ -58,29 +59,31 @@ export default function CreateListingClient({ editListing }) {
   const [form, setForm] = useState(
     isEdit
       ? {
-          title: editListing.title,
-          address: editListing.address,
-          description: editListing.description,
-          rent: String(editListing.rent),
-          utilityCharge: String(editListing.utilityCharge),
-          bedrooms: String(editListing.bedrooms),
-          bathrooms: String(editListing.bathrooms),
-          distance: String(editListing.distance),
-          departmentRelevance: editListing.departmentRelevance,
-          photoUrl: editListing.photoUrl,
-          availableFrom: editListing.availableFrom,
-          amenities: [...editListing.amenities],
+          title: editListing.title || "",
+          address: editListing.address || "",
+          description: editListing.description || "",
+          rent: String(editListing.rent || ""),
+          utilityCharge: String(editListing.utilityCharge || "0"),
+          bedrooms: String(editListing.bedrooms || "1"),
+          bathrooms: String(editListing.bathrooms || "1"),
+          distance: String(editListing.distance || ""),
+          departmentRelevance: editListing.departmentRelevance || "Any",
+          photoUrl: editListing.photoUrl || "",
+          availableFrom: editListing.availableFrom || "",
+          amenities: editListing.amenities ? [...editListing.amenities] : [],
         }
       : EMPTY_FORM
   );
 
   const [errors, setErrors] = useState({});
+  const [serverError, setServerError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
   function set(field, value) {
     setForm((f) => ({ ...f, [field]: value }));
     setErrors((e) => ({ ...e, [field]: undefined }));
+    setServerError("");
   }
 
   function toggleAmenity(a) {
@@ -107,14 +110,44 @@ export default function CreateListingClient({ editListing }) {
     return Object.keys(errs).length === 0;
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     if (!validate()) return;
     setSubmitting(true);
-    setTimeout(() => {
+    setServerError("");
+
+    const payload = {
+      title: form.title.trim(),
+      address: form.address.trim(),
+      description: form.description.trim(),
+      rent: Number(form.rent),
+      utilityCharge: Number(form.utilityCharge) || 0,
+      bedrooms: Number(form.bedrooms) || 1,
+      bathrooms: Number(form.bathrooms) || 1,
+      distance: String(form.distance),
+      departmentRelevance: form.departmentRelevance || "Any",
+      photoUrl: form.photoUrl?.trim() || "",
+      availableFrom: form.availableFrom?.trim() || "Immediately",
+      amenities: form.amenities,
+    };
+
+    try {
+      if (isEdit) {
+        await api.patch(`/api/listings/${editListing.id}`, payload);
+      } else {
+        await api.post("/api/listings", payload);
+      }
       setSubmitting(false);
       setSubmitted(true);
-    }, 1000);
+      router.refresh();
+    } catch (err) {
+      setSubmitting(false);
+      if (err.data?.errors) {
+        setErrors(err.data.errors);
+      } else {
+        setServerError(err.data?.message || err.message || "Failed to save listing");
+      }
+    }
   }
 
   if (submitted) {
@@ -241,6 +274,15 @@ export default function CreateListingClient({ editListing }) {
 
       <form id="listing-form" onSubmit={handleSubmit}>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+          {serverError && (
+            <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-center gap-2">
+              <svg className="w-5 h-5 shrink-0 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>{serverError}</span>
+            </div>
+          )}
+
           {/* Basic info */}
           <Section
             title="Basic information"

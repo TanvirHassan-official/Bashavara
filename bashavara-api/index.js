@@ -19,6 +19,9 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 
+// ── Reverse Proxy Trust (Required for Render, Railway, Vercel, Heroku) ──
+app.set("trust proxy", 1);
+
 // ── Security & Headers (Helmet) ──────────────────────────────────────
 app.use(helmet());
 
@@ -46,9 +49,15 @@ app.use("/api/auth", authLimiter);
 
 // ── CORS ────────────────────────────────────────────────────────────
 // Allow frontend origin with credentials enabled for session cookies
+const allowedOrigins = FRONTEND_URL.split(",").map((s) => s.trim());
 app.use(
   cors({
-    origin: FRONTEND_URL,
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(null, true);
+    },
     credentials: true,
   })
 );
@@ -81,6 +90,26 @@ app.use("/api/roommates", roommatesRouter);
 app.use("/api/me", roommatesRouter);
 app.use("/api/stats", statsRouter);
 
+// ── Write Rate Limiting ─────────────────────────────────────────────
+const writeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit write requests to 100 per 15 mins per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    error: "TooManyRequests",
+    message: "Too many write requests. Please try again after a few minutes.",
+  },
+});
+
+// Apply writeLimiter to all modifying HTTP methods under /api
+app.use("/api", (req, res, next) => {
+  if (["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) {
+    return writeLimiter(req, res, next);
+  }
+  next();
+});
+
 // ── Example Protected Routes ────────────────────────────────────────
 app.get("/api/me/session", requireAuth, (req, res) => {
   res.json({ user: req.user, session: req.session });
@@ -88,6 +117,28 @@ app.get("/api/me/session", requireAuth, (req, res) => {
 
 app.get("/api/landlord/protected", requireRole("landlord"), (req, res) => {
   res.json({ message: "Welcome Landlord!", user: req.user });
+});
+
+// ── 404 Handler ─────────────────────────────────────────────────────
+app.use((_req, res) => {
+  res.status(404).json({
+    error: "NotFound",
+    message: "The requested API endpoint does not exist",
+  });
+});
+
+// ── Centralized Express Error Handler ───────────────────────────────
+app.use((err, _req, res, _next) => {
+  console.error("Centralized Express Error Handler:", err);
+  const status = err.status || err.statusCode || 500;
+  const errorName = err.name || "ServerError";
+  const errorMessage = err.message || "An unexpected error occurred on the server";
+
+  res.status(status).json({
+    error: errorName,
+    message: errorMessage,
+    ...(err.errors ? { errors: err.errors } : {}),
+  });
 });
 
 // ── Database Verification & Server Start ────────────────────────────

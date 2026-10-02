@@ -35,7 +35,7 @@ const updateStatusSchema = z.object({
   status: z.enum(["active", "paused", "rented"]),
 });
 
-// ── 1. GET /api/listings (Public with filters & sort) ─────────────────────────
+// ── 1. GET /api/listings (Public with filters, sort & pagination) ─────────
 router.get("/", async (req, res) => {
   try {
     const {
@@ -48,6 +48,8 @@ router.get("/", async (req, res) => {
       status = "active",
       landlordId,
       sort = "newest",
+      page,
+      limit,
     } = req.query;
 
     let conditions = ["1=1"];
@@ -95,12 +97,34 @@ router.get("/", async (req, res) => {
       params.push(department);
     }
 
+    // Count total matching items for pagination
+    const countSql = `
+      SELECT COUNT(DISTINCT l.id) AS total
+      FROM listings l
+      JOIN user u ON l.landlord_id = u.id
+      WHERE ${conditions.join(" AND ")}
+    `;
+    const [countResult] = await query(countSql, params);
+    const total = Number(countResult?.total || 0);
+
     // Sorting
     let orderBy = "l.created_at DESC";
     if (sort === "price_asc") orderBy = "l.rent ASC";
     else if (sort === "price_desc") orderBy = "l.rent DESC";
     else if (sort === "distance_asc") orderBy = "CAST(l.distance AS DECIMAL(10,2)) ASC";
-    else if (sort === "rating_desc") orderBy = "avg_rating DESC";
+    else if (sort === "rating_desc") orderBy = "avgRating DESC";
+
+    let paginationClause = "";
+    const queryParams = [...params];
+
+    const pageNum = page ? Math.max(1, parseInt(page, 10)) : null;
+    const limitNum = limit ? Math.max(1, parseInt(limit, 10)) : null;
+
+    if (pageNum && limitNum) {
+      const offset = (pageNum - 1) * limitNum;
+      paginationClause = " LIMIT ? OFFSET ?";
+      queryParams.push(limitNum, offset);
+    }
 
     const sql = `
       SELECT 
@@ -137,13 +161,18 @@ router.get("/", async (req, res) => {
       WHERE ${conditions.join(" AND ")}
       GROUP BY l.id
       ORDER BY ${orderBy}
+      ${paginationClause}
     `;
 
-    const listings = await query(sql, params);
+    const listings = await query(sql, queryParams);
 
     res.json({
       success: true,
       count: listings.length,
+      total,
+      page: pageNum || 1,
+      limit: limitNum || total,
+      totalPages: limitNum ? Math.ceil(total / limitNum) : 1,
       listings: listings.map((l) => ({
         ...l,
         rent: Number(l.rent),

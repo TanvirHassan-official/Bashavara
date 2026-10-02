@@ -17,7 +17,7 @@ export default function Footer() {
             </span>
           </div>
           <p className="text-slate-500 text-sm">
-            © 2025 BashaVara. Student housing, simplified. For .edu accounts
+            © {new Date().getFullYear()} BashaVara. Student housing, simplified. For .edu accounts
             only.
           </p>
           <div className="flex gap-6 text-sm text-slate-500">

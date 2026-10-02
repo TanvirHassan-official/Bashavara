@@ -58,11 +58,19 @@ export const auth = betterAuth({
       },
     },
   },
-  trustedOrigins: [process.env.FRONTEND_URL || "http://localhost:3000"],
+  trustedOrigins: (process.env.FRONTEND_URL || "http://localhost:3000")
+    .split(",")
+    .map((s) => s.trim()),
   advanced: {
     defaultCookieAttributes: {
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-      secure: process.env.NODE_ENV === "production",
+      sameSite:
+        process.env.COOKIE_SAME_SITE ||
+        (process.env.NODE_ENV === "production" ? "none" : "lax"),
+      secure:
+        process.env.COOKIE_SECURE !== undefined
+          ? process.env.COOKIE_SECURE === "true"
+          : process.env.NODE_ENV === "production",
+      httpOnly: true,
     },
   },
 });
