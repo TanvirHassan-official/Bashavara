@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { signUp } from "@/lib/auth-client";
 
 const STUDENT_PERKS = [
   "Browse landlord-verified listings with real distances",
@@ -62,15 +63,26 @@ export default function RegisterForm({ initialRole = "student" }) {
     return Object.keys(errs).length === 0;
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     if (!validate()) return;
     setLoading(true);
-    // TODO: replace with a real call to the Express /api/auth/register endpoint via BetterAuth
-    setTimeout(() => {
+    setErrors({});
+
+    const { error } = await signUp.email({
+      email,
+      password,
+      name,
+    });
+
+    if (error) {
       setLoading(false);
-      router.push(isLandlord ? "/landlord" : "/listings");
-    }, 1100);
+      setErrors({ form: error.message || "Registration failed. Please try again." });
+      return;
+    }
+
+    router.push(isLandlord ? "/landlord" : "/listings");
+    router.refresh();
   }
 
   const perks = isLandlord ? LANDLORD_PERKS : STUDENT_PERKS;
@@ -409,6 +421,15 @@ export default function RegisterForm({ initialRole = "student" }) {
                   BashaVara is for university students only. Your .edu email
                   verifies eligibility and is used for login only.
                 </p>
+              </div>
+            )}
+
+            {errors.form && (
+              <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-center gap-2">
+                <svg className="w-4 h-4 text-red-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="text-sm text-red-600">{errors.form}</p>
               </div>
             )}
 

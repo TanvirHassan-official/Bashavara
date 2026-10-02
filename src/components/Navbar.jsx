@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "@/hooks/useSession";
-import { logout } from "@/lib/auth-client";
+import { signOut } from "@/lib/auth-client";
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -36,7 +36,7 @@ export default function Navbar() {
   const navLinks = isLandlord ? landlordLinks : studentLinks;
 
   const handleLogout = async () => {
-    await logout();
+    await signOut();
     setProfileOpen(false);
     window.location.href = "/";
   };
