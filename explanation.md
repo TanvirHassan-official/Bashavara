@@ -1,6 +1,6 @@
 # BashaVara Full-Stack API Architecture & Endpoints Matrix
 
-This document provides a comprehensive tracking reference for **every frontend API call**, **every backend API endpoint**, their **exact file locations**, request/response payloads, authentication & role requirements, client/server utilities, route guards, and database schema mappings.
+This document provides a comprehensive tracking reference for **every frontend API call**, **every backend API endpoint**, their **exact file locations**, request/response payloads, authentication & role requirements, client/server utilities, route guards, Zod validation schemas, and database schema mappings.
 
 ---
 
@@ -18,7 +18,11 @@ graph TD
     subgraph Backend ["Express API Server (Port 5000)"]
         AuthMw["requireAuth / requireRole Middleware"]
         BetterAuth["BetterAuth Engine (/api/auth/*splat)"]
-        BusinessRoutes["Business Routes (/api/listings, /api/requests, etc.)"]
+        ListingsRoute["routes/listings.js"]
+        RequestsRoute["routes/requests.js"]
+        ReviewsRoute["routes/reviews.js"]
+        RoommatesRoute["routes/roommates.js"]
+        StatsRoute["routes/stats.js"]
     end
 
     subgraph Database ["MySQL Database (Port 3306)"]
@@ -28,49 +32,73 @@ graph TD
     ProtectedLandlord -->|"Server Guard (lib/session.js)"| AuthMw
     ProtectedStudent -->|"Server Guard (lib/session.js)"| AuthMw
     ProtectedAction -->|"Client Guard (useSession / lib/api.js)"| AuthMw
-    AuthMw --> BusinessRoutes
-    BusinessRoutes --> DB
+    AuthMw --> ListingsRoute & RequestsRoute & ReviewsRoute & RoommatesRoute & StatsRoute
+    ListingsRoute & RequestsRoute & ReviewsRoute & RoommatesRoute & StatsRoute --> DB
     BetterAuth --> DB
 ```
 
 ### Route Guard Matrix (Next.js vs Express API)
 | Route / Page | Access Level | Frontend Server/Client Guard | Behavior If Unauthorized | Backend Security |
 |---|---|---|---|---|
-| `/` | **Public** | None | Allowed | N/A |
+| `/` | **Public** | None | Allowed | Public `GET /api/stats` |
 | `/listings` | **Public** | None | Allowed | Public `GET /api/listings` |
 | `/listings/[id]` | **Public** | None (Page is public) | Allowed | Public `GET /api/listings/:id` |
-| `/listings/[id]` *(Request Contact)* | **Protected (Student)** | Client Guard (`ListingDetailClient.jsx`) | Redirects to `/login` | `requireRole("student")` on `POST /api/requests` |
-| `/listings/[id]` *(Submit Review)* | **Protected (Student)** | Client Guard (`ListingDetailClient.jsx`) | Redirects to `/login` | `requireRole("student")` on `POST /api/reviews` |
-| `/roommates` | **Protected (Student)** | Server Guard ([`(student)/roommates/page.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(student)/roommates/page.jsx)) | Redirects to `/login` | `requireRole("student")` on `GET /api/roommates` |
-| `/dashboard` | **Protected (Student)** | Server Guard ([`(student)/dashboard/page.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(student)/dashboard/page.jsx)) | Redirects to `/login` (or `/landlord` if role=landlord) | `requireRole("student")` on `GET /api/student/dashboard` |
-| `/landlord/*` | **Protected (Landlord)** | Server Guard ([`(landlord)/layout.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(landlord)/layout.jsx)) | Redirects to `/login?role=landlord` (or `/dashboard` if role≠landlord) | `requireRole("landlord")` on all `/api/landlord/*` routes |
+| `/listings/[id]` *(Request Contact)* | **Protected (Student)** | Client Guard (`ListingDetailClient.jsx`) | Redirects to `/login` | `requireAuth` on `POST /api/requests` |
+| `/listings/[id]` *(Submit Review)* | **Protected (Student)** | Client Guard (`ListingDetailClient.jsx`) | Redirects to `/login` | `requireAuth` on `POST /api/listings/:id/reviews` |
+| `/roommates` | **Protected (Student)** | Server Guard ([`(student)/roommates/page.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(student)/roommates/page.jsx)) | Redirects to `/login` | `GET /api/roommates` (excludes self) |
+| `/dashboard` | **Protected (Student)** | Server Guard ([`(student)/dashboard/page.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(student)/dashboard/page.jsx)) | Redirects to `/login` (or `/landlord` if role=landlord) | `GET /api/requests/incoming` & `/outgoing` |
+| `/landlord/*` | **Protected (Landlord)** | Server Guard ([`(landlord)/layout.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(landlord)/layout.jsx)) | Redirects to `/login?role=landlord` (or `/dashboard` if role≠landlord) | `requireRole("landlord")` on all landlord endpoints |
 
 ---
 
-## 2. Frontend to Backend API Calls Matrix
+## 2. Complete Backend Routes & Handlers Matrix
 
-| # | Feature / Action | Frontend Component / Page | Method & Endpoint | Payload / Params | Auth / Role Required | Expected Response | Backend Handler Position |
-|---|---|---|---|---|---|---|---|
-| **1** | **User Registration** | [`RegisterForm.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/components/RegisterForm.jsx) | `POST /api/auth/sign-up/email` | `{ name, email, password, role, phone?, businessName? }` | Public (`.edu` enforced on student, phone required on landlord) | `{ token, user: { id, name, email, role, phone, businessName } }` | [`bashavara-api/auth.js`](file:///f:/BashaVara%20-%20Web/bashavara/bashavara-api/auth.js) *(BetterAuth hook)* |
-| **2** | **User Login** | [`LoginForm.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/components/LoginForm.jsx) | `POST /api/auth/sign-in/email` | `{ email, password }` | Public (Validates actual role matches UI toggle) | `{ token, user: { id, name, email, role } }` | [`bashavara-api/auth.js`](file:///f:/BashaVara%20-%20Web/bashavara/bashavara-api/auth.js) *(BetterAuth)* |
-| **3** | **User Logout** | [`Navbar.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/components/Navbar.jsx) | `POST /api/auth/sign-out` | None | Active Session | `{ success: true }` | [`bashavara-api/auth.js`](file:///f:/BashaVara%20-%20Web/bashavara/bashavara-api/auth.js) *(BetterAuth)* |
-| **4** | **Client Session Hook** | [`useSession.js`](file:///f:/BashaVara%20-%20Web/bashavara/src/hooks/useSession.js) / [`Navbar.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/components/Navbar.jsx) | `GET /api/auth/get-session` | None (`credentials: "include"`) | Client Session | `{ session, user: { id, name, email, role, phone, businessName } }` | [`bashavara-api/auth.js`](file:///f:/BashaVara%20-%20Web/bashavara/bashavara-api/auth.js) *(BetterAuth)* |
-| **5** | **Server Session Helper** | [`lib/session.js`](file:///f:/BashaVara%20-%20Web/bashavara/src/lib/session.js) | `GET /api/auth/get-session` | Forwards `Cookie` header from `cookies()` | Server Component Session | `{ session, user: { id, name, email, role, phone, businessName } }` | [`bashavara-api/auth.js`](file:///f:/BashaVara%20-%20Web/bashavara/bashavara-api/auth.js) *(BetterAuth)* |
-| **6** | **Fetch All Listings** | [`(student)/listings/page.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(student)/listings/page.jsx) | `GET /api/listings` | Query: `?location=&minPrice=&maxPrice=&gender=&type=` | Public | `[{ id, title, rent, location, gender, photos, ... }]` | [`routes/listings.js`](file:///f:/BashaVara%20-%20Web/bashavara/bashavara-api/routes/listings.js) `getAllListings` |
-| **7** | **Fetch Listing Detail** | [`ListingDetailClient.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(student)/listings/[id]/ListingDetailClient.jsx) | `GET /api/listings/:id` | Path Param: `id` | Public | `{ id, title, rent, landlord: { name, phone }, amenities, ... }` | [`routes/listings.js`](file:///f:/BashaVara%20-%20Web/bashavara/bashavara-api/routes/listings.js) `getListingById` |
-| **8** | **Create New Listing** | `(landlord)/landlord/listings/new` | `POST /api/listings` | `{ title, description, rent, utilityCharge, address, bedrooms, bathrooms, departmentRelevance, photoUrl, amenities }` | `requireRole("landlord")` | `{ success: true, listingId, listing }` | [`routes/listings.js`](file:///f:/BashaVara%20-%20Web/bashavara/bashavara-api/routes/listings.js) `createListing` |
-| **9** | **Update Listing** | `(landlord)/landlord/listings/[id]` | `PUT /api/listings/:id` | Partial listing object | `requireRole("landlord")` (Owner check) | `{ success: true, listing }` | [`routes/listings.js`](file:///f:/BashaVara%20-%20Web/bashavara/bashavara-api/routes/listings.js) `updateListing` |
-| **10** | **Delete Listing** | [`LandlordDashboardClient.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(landlord)/landlord/LandlordDashboardClient.jsx) | `DELETE /api/listings/:id` | Path Param: `id` | `requireRole("landlord")` (Owner check) | `{ success: true, message: "Listing deleted" }` | [`routes/listings.js`](file:///f:/BashaVara%20-%20Web/bashavara/bashavara-api/routes/listings.js) `deleteListing` |
-| **11** | **Landlord Dashboard Stats** | [`LandlordDashboardClient.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(landlord)/landlord/LandlordDashboardClient.jsx) | `GET /api/landlord/stats` | None | `requireRole("landlord")` | `{ totalListings, activeListings, totalApplications, pendingCount }` | [`routes/landlord.js`](file:///f:/BashaVara%20-%20Web/bashavara/bashavara-api/routes/landlord.js) `getLandlordStats` |
-| **12** | **Landlord's Own Listings** | [`LandlordDashboardClient.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(landlord)/landlord/LandlordDashboardClient.jsx) | `GET /api/landlord/listings` | None | `requireRole("landlord")` | `[{ id, title, rent, status, views, applicationsCount, ... }]` | [`routes/landlord.js`](file:///f:/BashaVara%20-%20Web/bashavara/bashavara-api/routes/landlord.js) `getMyListings` |
-| **13** | **Submit Booking / Listing Request** | [`ListingDetailClient.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(student)/listings/[id]/ListingDetailClient.jsx) | `POST /api/requests` | `{ receiverId, listingId, type: "listing", message? }` | `requireRole("student")` | `{ success: true, request: { id, status: "pending" } }` | [`routes/requests.js`](file:///f:/BashaVara%20-%20Web/bashavara/bashavara-api/routes/requests.js) `createRequest` |
-| **14** | **Landlord View Inquiries/Requests** | [`LandlordDashboardClient.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(landlord)/landlord/LandlordDashboardClient.jsx) | `GET /api/requests?type=listing` | Query: `?status=&listingId=` | `requireRole("landlord")` | `[{ id, listingTitle, sender: { name, email, phone }, status, ... }]` | [`routes/requests.js`](file:///f:/BashaVara%20-%20Web/bashavara/bashavara-api/routes/requests.js) `getReceivedRequests` |
-| **15** | **Update Request Status** | [`LandlordDashboardClient.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(landlord)/landlord/LandlordDashboardClient.jsx) | `PATCH /api/requests/:id/status` | `{ status: "accepted" \| "rejected" }` | Receiver Auth Check | `{ success: true, status }` | [`routes/requests.js`](file:///f:/BashaVara%20-%20Web/bashavara/bashavara-api/routes/requests.js) `updateStatus` |
-| **16** | **Student Dashboard Data** | [`(student)/dashboard/page.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(student)/dashboard/page.jsx) | `GET /api/student/dashboard` | None | `requireRole("student")` | `{ requests: [], savedListings: [], matches: [] }` | [`routes/student.js`](file:///f:/BashaVara%20-%20Web/bashavara/bashavara-api/routes/student.js) `getStudentDashboard` |
-| **17** | **Fetch Roommate Profiles** | [`(student)/roommates/page.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(student)/roommates/page.jsx) | `GET /api/roommates` | Query: `?department=&budget=&sleepSchedule=` | `requireRole("student")` | `[{ user_id, user: { name, email }, department, budget, bio, ... }]` | [`routes/roommates.js`](file:///f:/BashaVara%20-%20Web/bashavara/bashavara-api/routes/roommates.js) `getRoommates` |
-| **18** | **Upsert Roommate Profile** | [`(student)/roommates/page.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(student)/roommates/page.jsx) | `POST /api/roommates/profile` | `{ budget, department, sleepSchedule, smokingPreference, bio }` | `requireRole("student")` | `{ success: true, profile }` | [`routes/roommates.js`](file:///f:/BashaVara%20-%20Web/bashavara/bashavara-api/routes/roommates.js) `upsertProfile` |
-| **19** | **Send Roommate Connection Request**| [`(student)/roommates/page.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(student)/roommates/page.jsx) | `POST /api/requests` | `{ receiverId, type: "roommate", message? }` | `requireRole("student")` | `{ success: true, request: { id, status: "pending" } }` | [`routes/requests.js`](file:///f:/BashaVara%20-%20Web/bashavara/bashavara-api/routes/requests.js) `createRequest` |
-| **20** | **Submit Listing Review** | [`ListingDetailClient.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(student)/listings/[id]/ListingDetailClient.jsx) | `POST /api/reviews` | `{ listingId, rating, comment }` | `requireRole("student")` | `{ success: true, review }` | [`routes/reviews.js`](file:///f:/BashaVara%20-%20Web/bashavara/bashavara-api/routes/reviews.js) `createReview` |
+All route handlers live in [`bashavara-api/routes/`](file:///f:/BashaVara%20-%20Web/bashavara/bashavara-api/routes) with Zod validation and scoped database query helpers.
+
+### 🏠 A. Listings (`routes/listings.js`)
+| Method | Endpoint | Access / Middleware | Zod Validation | Description & Rules |
+|---|---|---|---|---|
+| `GET` | `/api/listings` | Public | Query: `minPrice`, `maxPrice`, `bedrooms`, `bathrooms`, `department`, `status`, `sort` | Lists properties with filters, sorting, aggregated amenities, `avgRating`, and `reviewCount`. |
+| `GET` | `/api/listings/:id` | Public | Path param: `id` | Returns single listing detail, amenities, landlord contact info, and full reviews list. |
+| `POST` | `/api/listings` | `requireRole("landlord")` | `createListingSchema` (title, address, rent, deposit, bedrooms, etc.) | Creates new property with normalized amenities under authenticated `landlord_id`. |
+| `PATCH`| `/api/listings/:id` | `requireRole("landlord")` | `updateListingSchema` (partial update) | Updates property. **Ownership check enforced** (`WHERE id = ? AND landlord_id = ?`). |
+| `PATCH`| `/api/listings/:id/status` | `requireRole("landlord")` | `updateStatusSchema` (`active` \| `paused` \| `rented`) | Changes listing status. **Ownership check enforced**. |
+| `DELETE`| `/api/listings/:id` | `requireRole("landlord")` | Path param: `id` | Deletes property and cascades associated amenities & reviews. **Ownership check enforced**. |
+
+---
+
+### 📩 B. Requests (`routes/requests.js`)
+| Method | Endpoint | Access / Middleware | Zod Validation | Description & Rules |
+|---|---|---|---|---|
+| `POST` | `/api/requests` | `requireAuth` | `createRequestSchema` (`receiverId`, `listingId?`, `type`, `message?`) | Submits booking application or roommate invite. Prevents self-requests. |
+| `GET` | `/api/requests/incoming` | `requireAuth` | None | Lists received requests. **Privacy Rule:** Sender email is returned **ONLY** when `status = 'accepted'`. |
+| `GET` | `/api/requests/outgoing` | `requireAuth` | None | Lists sent requests. **Privacy Rule:** Receiver email is returned **ONLY** when `status = 'accepted'`. |
+| `PATCH`| `/api/requests/:id` | `requireAuth` | `updateStatusSchema` (`accepted` \| `rejected`) | **Receiver-only authorization.** Accepts or declines request. Unlocks contact emails upon acceptance. |
+
+---
+
+### ⭐ C. Reviews (`routes/reviews.js`)
+| Method | Endpoint | Access / Middleware | Zod Validation | Description & Rules |
+|---|---|---|---|---|
+| `POST` | `/api/listings/:id/reviews` | `requireAuth` | `createReviewSchema` (`rating` 1–5, `comment`) | Submits a review. **Enforces 1 review per user per listing**. Verifies tenant interaction. Landlords cannot review own listings. |
+| `GET` | `/api/listings/:id/reviews` | Public | Path param: `id` | Fetches all verified student reviews for a listing. |
+
+---
+
+### 👥 D. Roommates & Profiles (`routes/roommates.js`)
+| Method | Endpoint | Access / Middleware | Zod Validation | Description & Rules |
+|---|---|---|---|---|
+| `GET` | `/api/roommates` | Public / Session | Query: `department`, `budgetMax`, `sleepSchedule`, `smokingPreference` | Lists other student profiles. **Excludes the authenticated user's own profile**. |
+| `GET` | `/api/me/profile` | `requireAuth` | None | Returns the logged-in student's personal info and roommate matching preferences. |
+| `PUT` | `/api/me/profile` | `requireAuth` | `profileSchema` (`budget`, `department`, `sleepSchedule`, `smokingPreference`, `bio`) | Upserts student roommate preferences in `roommate_profiles` (`ON DUPLICATE KEY UPDATE`). |
+
+---
+
+### 📊 E. Stats (`routes/stats.js`)
+| Method | Endpoint | Access / Middleware | Description & Output |
+|---|---|---|---|
+| `GET` | `/api/stats` | Public | Real-time database metrics replacing mock stats: `activeListings`, `verifiedStudents`, `verifiedLandlords`, `averageRating`, `successfulMatches`. |
+| `GET` | `/api/stats/landlord` | `requireRole("landlord")` | Aggregated dashboard stats: `totalListings`, `activeListings`, `totalApplications`, `pendingApplications`, `acceptedApplications`. |
 
 ---
 

@@ -8,6 +8,13 @@ import { toNodeHandler } from "better-auth/node";
 import { initDatabase } from "./db.js";
 import { requireAuth, requireRole } from "./middleware/auth.js";
 
+// Route Handlers
+import listingsRouter from "./routes/listings.js";
+import requestsRouter from "./routes/requests.js";
+import reviewsRouter from "./routes/reviews.js";
+import roommatesRouter from "./routes/roommates.js";
+import statsRouter from "./routes/stats.js";
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
@@ -65,8 +72,17 @@ app.get("/health", (_req, res) => {
   });
 });
 
+// ── API Business Routes ─────────────────────────────────────────────
+app.use("/api/listings", listingsRouter);
+app.use("/api/listings/:id/reviews", reviewsRouter);
+app.use("/api/reviews", reviewsRouter);
+app.use("/api/requests", requestsRouter);
+app.use("/api/roommates", roommatesRouter);
+app.use("/api/me", roommatesRouter);
+app.use("/api/stats", statsRouter);
+
 // ── Example Protected Routes ────────────────────────────────────────
-app.get("/api/me", requireAuth, (req, res) => {
+app.get("/api/me/session", requireAuth, (req, res) => {
   res.json({ user: req.user, session: req.session });
 });
 
