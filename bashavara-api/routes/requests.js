@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import crypto from "crypto";
 import { pool } from "../db.js";
-import { requireAuth } from "../middleware/auth.js";
+import { requireAuth, requireRole } from "../middleware/auth.js";
 
 const router = Router();
 
@@ -14,18 +14,19 @@ async function query(sql, params = []) {
 
 // ── Validation Schemas ───────────────────────────────────────────────────────
 const createRequestSchema = z.object({
-  receiverId: z.string().min(1, "receiverId is required"),
-  listingId: z.string().optional().nullable(),
+  receiverId: z.string().min(1).optional().nullable(), // ignored for listing requests
+  listingId: z.string().min(1).optional().nullable(),
   type: z.enum(["listing", "roommate"]),
-  message: z.string().optional().default(""),
+  message: z.string().max(1000).optional().default(""),
 });
 
+// "pending" removed: a receiver can only accept or reject
 const updateStatusSchema = z.object({
-  status: z.enum(["accepted", "rejected", "declined", "pending"]),
+  status: z.enum(["accepted", "rejected", "declined"]),
 });
 
-// ── 1. POST /api/requests (Create inquiry or roommate invite) ────────────────
-router.post("/", requireAuth, async (req, res) => {
+// ── 1. POST /api/requests (students only) ────────────────────────────────────
+router.post("/", requireRole("student"), async (req, res) => {
   try {
     const parseResult = createRequestSchema.safeParse(req.body);
     if (!parseResult.success) {
@@ -35,8 +36,61 @@ router.post("/", requireAuth, async (req, res) => {
       });
     }
 
-    const { receiverId, listingId, type, message } = parseResult.data;
+    const { listingId, type, message } = parseResult.data;
     const senderId = req.user.id;
+
+    let receiverId;
+    let resolvedListingId = null;
+
+    if (type === "listing") {
+      // The receiver is ALWAYS the listing's landlord. Never trust the client.
+      if (!listingId) {
+        return res.status(400).json({
+          error: "ValidationError",
+          message: "listingId is required for listing requests",
+        });
+      }
+
+      const [listing] = await query(
+        "SELECT id, landlord_id, status FROM listings WHERE id = ?",
+        [listingId]
+      );
+      if (!listing) {
+        return res.status(404).json({ error: "NotFound", message: "Listing not found" });
+      }
+      if (listing.status !== "active") {
+        return res.status(400).json({
+          error: "ListingUnavailable",
+          message: "This listing is not accepting requests right now",
+        });
+      }
+
+      receiverId = listing.landlord_id;
+      resolvedListingId = listing.id;
+    } else {
+      // Roommate request: receiver must be another student, no listing attached
+      receiverId = parseResult.data.receiverId;
+      if (!receiverId) {
+        return res.status(400).json({
+          error: "ValidationError",
+          message: "receiverId is required for roommate requests",
+        });
+      }
+
+      const [receiver] = await query(
+        "SELECT id, role FROM user WHERE id = ?",
+        [receiverId]
+      );
+      if (!receiver) {
+        return res.status(404).json({ error: "NotFound", message: "Receiver user not found" });
+      }
+      if (receiver.role !== "student") {
+        return res.status(400).json({
+          error: "InvalidRequest",
+          message: "Roommate requests can only be sent to students",
+        });
+      }
+    }
 
     if (senderId === receiverId) {
       return res.status(400).json({
@@ -45,34 +99,27 @@ router.post("/", requireAuth, async (req, res) => {
       });
     }
 
-    // Verify receiver exists
-    const [receiver] = await query("SELECT id FROM user WHERE id = ?", [receiverId]);
-    if (!receiver) {
-      return res.status(404).json({ error: "NotFound", message: "Receiver user not found" });
-    }
-
-    // If listing request, verify listing exists
-    if (type === "listing" && listingId) {
-      const [listing] = await query("SELECT id FROM listings WHERE id = ?", [listingId]);
-      if (!listing) {
-        return res.status(404).json({ error: "NotFound", message: "Listing not found" });
-      }
+    // Block duplicates while a request is pending or accepted
+    // (<=> is MySQL's NULL-safe equality, needed because roommate requests have listing_id = NULL)
+    const [duplicate] = await query(
+      `SELECT id FROM requests
+       WHERE sender_id = ? AND receiver_id = ? AND type = ?
+         AND listing_id <=> ? AND status IN ('pending', 'accepted')`,
+      [senderId, receiverId, type, resolvedListingId]
+    );
+    if (duplicate) {
+      return res.status(409).json({
+        error: "DuplicateRequest",
+        message: "You already have an active request for this",
+      });
     }
 
     const requestId = `req_${crypto.randomUUID().slice(0, 8)}`;
-    const insertSql = `
-      INSERT INTO requests (id, sender_id, receiver_id, listing_id, type, status, message)
-      VALUES (?, ?, ?, ?, ?, 'pending', ?)
-    `;
-
-    await query(insertSql, [
-      requestId,
-      senderId,
-      receiverId,
-      listingId || null,
-      type,
-      message,
-    ]);
+    await query(
+      `INSERT INTO requests (id, sender_id, receiver_id, listing_id, type, status, message)
+       VALUES (?, ?, ?, ?, ?, 'pending', ?)`,
+      [requestId, senderId, receiverId, resolvedListingId, type, message]
+    );
 
     res.status(201).json({
       success: true,
@@ -85,19 +132,17 @@ router.post("/", requireAuth, async (req, res) => {
   }
 });
 
-// ── 2. GET /api/requests/incoming (Received requests) ────────────────────────
-// Returns sender's email ONLY if status is 'accepted'
+// ── 2. GET /api/requests/incoming ────────────────────────────────────────────
+// Sender's email AND phone are returned ONLY when status is 'accepted'
 router.get("/incoming", requireAuth, async (req, res) => {
   try {
-    const userId = req.user.id;
-
     const sql = `
-      SELECT 
+      SELECT
         r.id,
         r.sender_id AS senderId,
         u.name AS senderName,
         u.role AS senderRole,
-        u.phone AS senderPhone,
+        CASE WHEN r.status = 'accepted' THEN u.phone ELSE NULL END AS senderPhone,
         CASE WHEN r.status = 'accepted' THEN u.email ELSE NULL END AS senderEmail,
         r.receiver_id AS receiverId,
         r.listing_id AS listingId,
@@ -114,34 +159,27 @@ router.get("/incoming", requireAuth, async (req, res) => {
       ORDER BY r.created_at DESC
     `;
 
-    const requests = await query(sql, [userId]);
-
-    res.json({
-      success: true,
-      count: requests.length,
-      requests,
-    });
+    const requests = await query(sql, [req.user.id]);
+    res.json({ success: true, count: requests.length, requests });
   } catch (error) {
     console.error("Error fetching incoming requests:", error);
     res.status(500).json({ error: "Failed to fetch incoming requests", message: error.message });
   }
 });
 
-// ── 3. GET /api/requests/outgoing (Sent requests) ────────────────────────────
-// Returns receiver's email ONLY if status is 'accepted'
+// ── 3. GET /api/requests/outgoing ────────────────────────────────────────────
+// Receiver's email AND phone are returned ONLY when status is 'accepted'
 router.get("/outgoing", requireAuth, async (req, res) => {
   try {
-    const userId = req.user.id;
-
     const sql = `
-      SELECT 
+      SELECT
         r.id,
         r.sender_id AS senderId,
         r.receiver_id AS receiverId,
         u.name AS receiverName,
         u.role AS receiverRole,
         u.businessName AS receiverBusinessName,
-        u.phone AS receiverPhone,
+        CASE WHEN r.status = 'accepted' THEN u.phone ELSE NULL END AS receiverPhone,
         CASE WHEN r.status = 'accepted' THEN u.email ELSE NULL END AS receiverEmail,
         r.listing_id AS listingId,
         l.title AS listingTitle,
@@ -157,20 +195,15 @@ router.get("/outgoing", requireAuth, async (req, res) => {
       ORDER BY r.created_at DESC
     `;
 
-    const requests = await query(sql, [userId]);
-
-    res.json({
-      success: true,
-      count: requests.length,
-      requests,
-    });
+    const requests = await query(sql, [req.user.id]);
+    res.json({ success: true, count: requests.length, requests });
   } catch (error) {
     console.error("Error fetching outgoing requests:", error);
     res.status(500).json({ error: "Failed to fetch outgoing requests", message: error.message });
   }
 });
 
-// ── 4. PATCH /api/requests/:id (Receiver only: Accept or Decline) ────────────
+// ── 4. PATCH /api/requests/:id (receiver only, pending -> accepted/rejected) ──
 router.patch("/:id", requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
@@ -184,9 +217,8 @@ router.patch("/:id", requireAuth, async (req, res) => {
       });
     }
 
-    // Verify receiver ownership
     const [existing] = await query(
-      "SELECT id, sender_id, receiver_id, status FROM requests WHERE id = ?",
+      "SELECT id, receiver_id, status FROM requests WHERE id = ?",
       [id]
     );
 
@@ -201,26 +233,40 @@ router.patch("/:id", requireAuth, async (req, res) => {
       });
     }
 
-    let status = parseResult.data.status;
-    if (status === "declined") status = "rejected";
+    // Decisions are final: only pending requests can be answered
+    if (existing.status !== "pending") {
+      return res.status(409).json({
+        error: "AlreadyResolved",
+        message: `This request was already ${existing.status}`,
+      });
+    }
 
-    await query("UPDATE requests SET status = ? WHERE id = ?", [status, id]);
+    const status = parseResult.data.status === "declined" ? "rejected" : parseResult.data.status;
 
-    // Fetch updated request with unlocked email if accepted
+    // AND status = 'pending' guards against two simultaneous responses
+    const [result] = await pool.query(
+      "UPDATE requests SET status = ? WHERE id = ? AND receiver_id = ? AND status = 'pending'",
+      [status, id, userId]
+    );
+    if (result.affectedRows === 0) {
+      return res.status(409).json({
+        error: "AlreadyResolved",
+        message: "This request was already resolved",
+      });
+    }
+
     const [updated] = await query(
-      `
-      SELECT 
-        r.id,
-        r.sender_id AS senderId,
-        u.name AS senderName,
-        u.phone AS senderPhone,
-        CASE WHEN r.status = 'accepted' THEN u.email ELSE NULL END AS senderEmail,
-        r.status,
-        r.updated_at AS updatedAt
-      FROM requests r
-      JOIN user u ON r.sender_id = u.id
-      WHERE r.id = ?
-    `,
+      `SELECT
+         r.id,
+         r.sender_id AS senderId,
+         u.name AS senderName,
+         CASE WHEN r.status = 'accepted' THEN u.phone ELSE NULL END AS senderPhone,
+         CASE WHEN r.status = 'accepted' THEN u.email ELSE NULL END AS senderEmail,
+         r.status,
+         r.updated_at AS updatedAt
+       FROM requests r
+       JOIN user u ON r.sender_id = u.id
+       WHERE r.id = ?`,
       [id]
     );
 

@@ -76,8 +76,8 @@ export default function LandlordDashboardClient({
         newStatus === "rented"
           ? "Listing marked as Rented."
           : newStatus === "active"
-          ? "Listing activated."
-          : "Listing paused.";
+            ? "Listing activated."
+            : "Listing paused.";
       showSuccess(statusText);
     } catch (err) {
       console.error("Failed to update listing status:", err);
@@ -103,6 +103,7 @@ export default function LandlordDashboardClient({
       showSuccess("Listing deleted successfully.");
     } catch (err) {
       console.error("Failed to delete listing:", err);
+      setDeleteConfirm(null);
       setActionError(err.message || "Failed to delete listing.");
     } finally {
       setActionLoading(false);
@@ -122,10 +123,10 @@ export default function LandlordDashboardClient({
         prev.map((r) =>
           r.id === id
             ? {
-                ...r,
-                status: newStatus,
-                senderEmail: updatedData?.senderEmail || r.senderEmail,
-              }
+              ...r,
+              status: newStatus,
+              senderEmail: updatedData?.senderEmail || r.senderEmail,
+            }
             : r
         )
       );
@@ -248,18 +249,16 @@ export default function LandlordDashboardClient({
           ].map((s) => (
             <div
               key={s.label}
-              className={`bg-white rounded-2xl border p-5 ${
-                s.alert ? "border-orange-200" : "border-slate-100"
-              }`}
+              className={`bg-white rounded-2xl border p-5 ${s.alert ? "border-orange-200" : "border-slate-100"
+                }`}
             >
               <div className="flex items-center justify-between mb-2">
                 <p className="text-xs text-slate-400">{s.label}</p>
                 <span className="text-xl">{s.icon}</span>
               </div>
               <p
-                className={`font-heading text-3xl font-bold ${
-                  s.alert ? "text-orange-500" : "text-slate-900"
-                }`}
+                className={`font-heading text-3xl font-bold ${s.alert ? "text-orange-500" : "text-slate-900"
+                  }`}
               >
                 {s.value}
               </p>
@@ -269,15 +268,15 @@ export default function LandlordDashboardClient({
         </div>
 
         {/* Tabs */}
-        <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-          <div className="flex border-b border-slate-100">
+        {/* No overflow-hidden here: it clips the 3-dots dropdown (Delete) on the last rows */}
+        <div className="bg-white rounded-2xl border border-slate-100">
+          <div className="flex border-b border-slate-100 rounded-t-2xl overflow-hidden">
             <button
               onClick={() => setTab("listings")}
-              className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-colors ${
-                tab === "listings"
+              className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-colors ${tab === "listings"
                   ? "text-orange-600 border-b-2 border-orange-500 bg-orange-50/50"
                   : "text-slate-500 hover:text-slate-700"
-              }`}
+                }`}
             >
               My Listings
               <span className="text-xs text-slate-400">
@@ -286,11 +285,10 @@ export default function LandlordDashboardClient({
             </button>
             <button
               onClick={() => setTab("requests")}
-              className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-colors ${
-                tab === "requests"
+              className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-colors ${tab === "requests"
                   ? "text-orange-600 border-b-2 border-orange-500 bg-orange-50/50"
                   : "text-slate-500 hover:text-slate-700"
-              }`}
+                }`}
             >
               Student Requests
               {pendingRequests > 0 && (
@@ -394,7 +392,7 @@ function ListingsTab({ listings, actionLoadingId, onToggleStatus, onDelete }) {
   }
 
   return (
-    <div className="divide-y divide-slate-50">
+    <div className="divide-y divide-slate-50 rounded-b-2xl">
       {listings.map((listing) => (
         <ListingRow
           key={listing.id}
@@ -410,9 +408,10 @@ function ListingsTab({ listings, actionLoadingId, onToggleStatus, onDelete }) {
 
 function ListingRow({ listing, isLoading, onToggleStatus, onDelete }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const status = (listing.status || listing.listingStatus || "active").toLowerCase();
+  const rawStatus = String(listing.status || listing.listingStatus || "active").toLowerCase();
+  const status = ["active", "paused", "rented"].includes(rawStatus) ? rawStatus : "active";
   const statusBadge = STATUS_BADGE[status] || STATUS_BADGE.active;
-  const statusLabel = status ? status.charAt(0).toUpperCase() + status.slice(1) : "Active";
+  const statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
 
   const rawDist = String(listing.distance || "").trim();
   const displayDist = rawDist
@@ -478,13 +477,22 @@ function ListingRow({ listing, isLoading, onToggleStatus, onDelete }) {
       {/* Actions */}
       <div className="flex items-center gap-2 shrink-0">
         {status === "active" ? (
-          <button
-            disabled={isLoading}
-            onClick={() => onToggleStatus(listing.id, "paused")}
-            className="px-3 py-1.5 text-xs font-medium border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
-          >
-            {isLoading ? "Updating..." : "Pause"}
-          </button>
+          <>
+            <button
+              disabled={isLoading}
+              onClick={() => onToggleStatus(listing.id, "rented")}
+              className="px-3 py-1.5 text-xs font-medium border border-slate-300 rounded-lg text-slate-500 bg-slate-50 hover:bg-slate-100 transition-colors disabled:opacity-50"
+            >
+              {isLoading ? "Updating..." : "Mark Rented"}
+            </button>
+            <button
+              disabled={isLoading}
+              onClick={() => onToggleStatus(listing.id, "paused")}
+              className="px-3 py-1.5 text-xs font-medium border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
+            >
+              {isLoading ? "Updating..." : "Pause"}
+            </button>
+          </>
         ) : status === "paused" ? (
           <button
             disabled={isLoading}
@@ -532,42 +540,10 @@ function ListingRow({ listing, isLoading, onToggleStatus, onDelete }) {
                   Edit listing
                 </Link>
 
-                {/* Mark as Rented or Mark as Available */}
-                {status !== "rented" ? (
-                  <button
-                    onClick={() => {
-                      onToggleStatus(listing.id, "rented");
-                      setMenuOpen(false);
-                    }}
-                    className="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-                  >
-                    <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                    </svg>
-                    Mark as rented
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => {
-                      onToggleStatus(listing.id, "active");
-                      setMenuOpen(false);
-                    }}
-                    className="w-full text-left px-4 py-2 text-xs font-medium text-emerald-600 hover:bg-emerald-50 flex items-center gap-2"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    Mark as available (Active)
-                  </button>
-                )}
-
-                {/* Status Toggle helper in menu */}
+                {/* Status actions — context-aware */}
                 {status === "active" && (
                   <button
-                    onClick={() => {
-                      onToggleStatus(listing.id, "paused");
-                      setMenuOpen(false);
-                    }}
+                    onClick={() => { onToggleStatus(listing.id, "paused"); setMenuOpen(false); }}
                     className="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2"
                   >
                     <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -579,10 +555,7 @@ function ListingRow({ listing, isLoading, onToggleStatus, onDelete }) {
 
                 {status === "paused" && (
                   <button
-                    onClick={() => {
-                      onToggleStatus(listing.id, "active");
-                      setMenuOpen(false);
-                    }}
+                    onClick={() => { onToggleStatus(listing.id, "active"); setMenuOpen(false); }}
                     className="w-full text-left px-4 py-2 text-xs font-medium text-emerald-600 hover:bg-emerald-50 flex items-center gap-2"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -592,12 +565,21 @@ function ListingRow({ listing, isLoading, onToggleStatus, onDelete }) {
                   </button>
                 )}
 
+                {status === "rented" && (
+                  <button
+                    onClick={() => { onToggleStatus(listing.id, "active"); setMenuOpen(false); }}
+                    className="w-full text-left px-4 py-2 text-xs font-medium text-emerald-600 hover:bg-emerald-50 flex items-center gap-2"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Mark as available
+                  </button>
+                )}
+
                 <div className="border-t border-slate-100 mt-1 pt-1">
                   <button
-                    onClick={() => {
-                      onDelete(listing);
-                      setMenuOpen(false);
-                    }}
+                    onClick={() => { onDelete(listing); setMenuOpen(false); }}
                     className="w-full text-left px-4 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 flex items-center gap-2"
                   >
                     <svg className="w-3.5 h-3.5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -719,9 +701,9 @@ function RequestRow({ req, onUpdateStatus }) {
               Requested{" "}
               {req.createdAt
                 ? new Date(req.createdAt).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                  })
+                  month: "short",
+                  day: "numeric",
+                })
                 : "recently"}
             </p>
           )}
