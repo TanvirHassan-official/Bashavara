@@ -271,3 +271,97 @@ The test script [`bashavara-api/test-flow.js`](file:///f:/BashaVara%20-%20Web/ba
 6. **Verified Review**: Student submits 5-star rating & review on the property.
 7. **Role Security**: Student blocked from accessing landlord route (`403 Forbidden`).
 8. **Ownership Security**: Landlord blocked from modifying another landlord's listing (`403 Forbidden`).
+
+---
+
+## 7. Frontend API Calls Reference
+
+All frontend API calls go through **[`src/lib/api.js`](file:///f:/BashaVara%20-%20Web/bashavara/src/lib/api.js)** (`api.get / post / patch / put / delete → apiFetch`) or through **BetterAuth's client** ([`src/lib/auth-client.js`](file:///f:/BashaVara%20-%20Web/bashavara/src/lib/auth-client.js)) (`signIn.email / signUp.email / signOut`).
+
+> **Legend** — *SC* = Server Component (runs on Node, cookies forwarded via `next/headers`), *CC* = Client Component (runs in browser, cookies sent via `credentials: "include"`)
+
+---
+
+### 🔐 A. Auth Calls (BetterAuth Client → `/api/auth/*`)
+
+| Call | Source File | Trigger | Backend Endpoint |
+|---|---|---|---|
+| `signUp.email(...)` | [`RegisterForm.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/components/RegisterForm.jsx) | User submits Register form | `POST /api/auth/sign-up/email` |
+| `signIn.email(...)` | [`LoginForm.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/components/LoginForm.jsx) | User submits Login form | `POST /api/auth/sign-in/email` |
+| `signOut()` | [`Navbar.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/components/Navbar.jsx) | User clicks "Sign Out" in nav | `POST /api/auth/sign-out` |
+| `signOut()` | [`LoginForm.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/components/LoginForm.jsx) | Role mismatch after sign-in (auto sign-out) | `POST /api/auth/sign-out` |
+
+---
+
+### 📊 B. Stats & Listings API Calls (`/api/stats`, `/api/listings`)
+
+> **Note:** `GET /api/stats` is correctly in a separate backend router (`routes/stats.js`), but is always fetched alongside listings on the homepage — hence grouped here.
+
+| Call | Source File | Component Type | Trigger | Backend Endpoint |
+|---|---|---|---|---|
+| `api.get("/api/stats")` | [`app/page.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/page.jsx) | SC | Homepage load | `GET /api/stats` |
+| `api.get("/api/listings?status=active")` | [`app/page.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/page.jsx) | SC | Homepage load (featured listings, top 3) | `GET /api/listings` |
+| `api.get("/api/listings?status=active")` | [`(student)/listings/page.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(student)/listings/page.jsx) | SC | Listings page initial server fetch | `GET /api/listings` |
+| `api.get("/api/listings?status=active")` | [`ListingsClient.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(student)/listings/ListingsClient.jsx) | CC | Client-side fallback — `refetchListings()` fires when server-passed data is empty | `GET /api/listings` |
+| `api.get("/api/listings/:id")` | [`(student)/listings/[id]/page.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(student)/listings/%5Bid%5D/page.jsx) | SC | Listing detail page — called twice: once in `generateMetadata()` (for SEO title) and once in the page render | `GET /api/listings/:id` |
+| `api.get("/api/listings?landlordId=...&status=all")` | [`(landlord)/landlord/page.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(landlord)/landlord/page.jsx) | SC | Landlord dashboard load — fetches only this landlord's own listings (all statuses) | `GET /api/listings` |
+| `api.get("/api/listings/:id")` | [`(landlord)/landlord/listings/[id]/edit/page.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(landlord)/landlord/listings/%5Bid%5D/edit/page.jsx) | SC | Edit listing page load — prefills `CreateListingClient` form | `GET /api/listings/:id` |
+| `api.post("/api/listings", payload)` | [`CreateListingClient.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/components/CreateListingClient.jsx) | CC | Landlord submits "Create Listing" form | `POST /api/listings` |
+| `api.patch("/api/listings/:id", payload)` | [`CreateListingClient.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/components/CreateListingClient.jsx) | CC | Landlord submits "Edit Listing" form (same component, `isEdit` flag true) | `PATCH /api/listings/:id` |
+| `api.patch("/api/listings/:id/status", { status })` | [`LandlordDashboardClient.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(landlord)/landlord/LandlordDashboardClient.jsx) | CC | Landlord clicks status toggle (active / paused / rented) via `toggleListingStatus()` | `PATCH /api/listings/:id/status` |
+| `api.delete("/api/listings/:id")` | [`LandlordDashboardClient.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(landlord)/landlord/LandlordDashboardClient.jsx) | CC | Landlord confirms delete via `deleteListing()` | `DELETE /api/listings/:id` |
+
+---
+
+### 📩 C. Requests API Calls (`/api/requests`)
+
+| Call | Source File | Component Type | Trigger | Backend Endpoint |
+|---|---|---|---|---|
+| `api.get("/api/requests/incoming")` | [`(landlord)/landlord/page.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(landlord)/landlord/page.jsx) | SC | Landlord dashboard load | `GET /api/requests/incoming` |
+| `api.get("/api/requests/incoming")` | [`(student)/dashboard/page.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(student)/dashboard/page.jsx) | SC | Student dashboard load | `GET /api/requests/incoming` |
+| `api.get("/api/requests/outgoing")` | [`(student)/dashboard/page.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(student)/dashboard/page.jsx) | SC | Student dashboard load | `GET /api/requests/outgoing` |
+| `api.post("/api/requests", { receiverId, listingId, type, message })` | [`ListingDetailClient.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(student)/listings/%5Bid%5D/ListingDetailClient.jsx) | CC | Student clicks "Request Contact" on a listing | `POST /api/requests` |
+| `api.post("/api/requests", { receiverId, type: "roommate", message })` | [`RoommatesClient.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(student)/roommates/RoommatesClient.jsx) | CC | Student sends a roommate connect request | `POST /api/requests` |
+| `api.patch("/api/requests/:id", { status })` | [`DashboardClient.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(student)/dashboard/DashboardClient.jsx) | CC | Student accepts/declines an incoming request | `PATCH /api/requests/:id` |
+| `api.patch("/api/requests/:id", { status })` | [`LandlordDashboardClient.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(landlord)/landlord/LandlordDashboardClient.jsx) | CC | Landlord accepts/rejects an incoming student request | `PATCH /api/requests/:id` |
+
+---
+
+### ⭐ D. Reviews API Calls (`/api/listings/:id/reviews`)
+
+| Call | Source File | Component Type | Trigger | Backend Endpoint |
+|---|---|---|---|---|
+| `api.post("/api/listings/:id/reviews", { rating, comment })` | [`ListingDetailClient.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(student)/listings/%5Bid%5D/ListingDetailClient.jsx) | CC | Student submits a review on a listing | `POST /api/listings/:id/reviews` |
+
+---
+
+### 👥 E. Roommates & Profile API Calls (`/api/roommates`, `/api/me/profile`)
+
+| Call | Source File | Component Type | Trigger | Backend Endpoint |
+|---|---|---|---|---|
+| `api.get("/api/me/profile")` | [`(student)/roommates/page.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(student)/roommates/page.jsx) | SC | Roommates page load (fetch own profile) | `GET /api/me/profile` |
+| `api.get("/api/roommates")` | [`(student)/roommates/page.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(student)/roommates/page.jsx) | SC | Roommates page load (fetch other students) | `GET /api/roommates` |
+| `api.put("/api/me/profile", { budget, department, ... })` | [`RoommatesClient.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(student)/roommates/RoommatesClient.jsx) | CC | Student saves their roommate preferences | `PUT /api/me/profile` |
+
+---
+
+### 📊 F. Call Summary by File
+
+| Source File | API Calls Made |
+|---|---|
+| [`app/page.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/page.jsx) | `GET /api/stats`, `GET /api/listings` |
+| [`LoginForm.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/components/LoginForm.jsx) | `signIn.email()`, `signOut()` |
+| [`RegisterForm.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/components/RegisterForm.jsx) | `signUp.email()` |
+| [`Navbar.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/components/Navbar.jsx) | `signOut()` |
+| [`(student)/listings/page.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(student)/listings/page.jsx) | `GET /api/listings` |
+| [`ListingsClient.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(student)/listings/ListingsClient.jsx) | `GET /api/listings` (client-side fallback refetch) |
+| [`(student)/listings/[id]/page.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(student)/listings/%5Bid%5D/page.jsx) | `GET /api/listings/:id` (×2: metadata + render) |
+| [`ListingDetailClient.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(student)/listings/%5Bid%5D/ListingDetailClient.jsx) | `POST /api/requests`, `POST /api/listings/:id/reviews` |
+| [`(student)/dashboard/page.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(student)/dashboard/page.jsx) | `GET /api/requests/incoming`, `GET /api/requests/outgoing` |
+| [`DashboardClient.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(student)/dashboard/DashboardClient.jsx) | `PATCH /api/requests/:id` |
+| [`(student)/roommates/page.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(student)/roommates/page.jsx) | `GET /api/me/profile`, `GET /api/roommates` |
+| [`RoommatesClient.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(student)/roommates/RoommatesClient.jsx) | `PUT /api/me/profile`, `POST /api/requests` |
+| [`(landlord)/landlord/page.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(landlord)/landlord/page.jsx) | `GET /api/listings`, `GET /api/requests/incoming` |
+| [`LandlordDashboardClient.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(landlord)/landlord/LandlordDashboardClient.jsx) | `PATCH /api/listings/:id/status`, `DELETE /api/listings/:id`, `PATCH /api/requests/:id` |
+| [`(landlord)/landlord/listings/[id]/edit/page.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(landlord)/landlord/listings/%5Bid%5D/edit/page.jsx) | `GET /api/listings/:id` |
+| [`CreateListingClient.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/components/CreateListingClient.jsx) | `POST /api/listings`, `PATCH /api/listings/:id` |
