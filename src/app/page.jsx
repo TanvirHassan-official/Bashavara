@@ -66,6 +66,24 @@ const FEATURES = [
   },
 ];
 
+const STEPS = [
+  {
+    step: "01",
+    title: "Create your profile",
+    desc: "Sign up with your .edu email and tell us your budget, department, and lifestyle preferences.",
+  },
+  {
+    step: "02",
+    title: "Browse landlord listings",
+    desc: "Landlords post verified properties with real rent, walking distance, and available dates — no student re-listings.",
+  },
+  {
+    step: "03",
+    title: "Connect & move in",
+    desc: "Send a request, get accepted, exchange contact info directly with the landlord, and secure your home.",
+  },
+];
+
 export default async function HomePage() {
   let stats = {
     activeListings: 14,
@@ -169,7 +187,7 @@ export default async function HomePage() {
               <div className="relative">
                 <div className="rounded-3xl overflow-hidden bg-slate-100 shadow-2xl shadow-slate-200/60">
                   <img
-                    src="https://images.unsplash.com/photo-1522708323590-d24dbb2b4e4f?w=800&h=600&fit=crop&auto=format"
+                    src="./hero-housing.jpg"
                     alt="Bright student apartment"
                     className="w-full h-full object-cover aspect-[4/3]"
                   />
@@ -338,6 +356,163 @@ export default async function HomePage() {
             </div>
           </section>
         )}
+
+        {/* How it works */}
+        <section className="py-24">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-16">
+              <h2 className="font-heading text-4xl font-bold text-slate-900 mb-4">
+                How it works
+              </h2>
+              <p className="text-lg text-slate-500">
+                Three steps to your next home
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-8 relative">
+              <div className="hidden md:block absolute top-8 left-[16.67%] right-[16.67%] h-px bg-gradient-to-r from-orange-200 via-orange-300 to-orange-200" />
+              {STEPS.map((step) => (
+                <div key={step.step} className="relative text-center px-6">
+                  <div className="w-16 h-16 bg-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-orange-100">
+                    <span className="font-heading text-white font-bold text-lg">
+                      {step.step}
+                    </span>
+                  </div>
+                  <h3 className="font-heading text-xl font-semibold text-slate-900 mb-3">
+                    {step.title}
+                  </h3>
+                  <p className="text-slate-500 leading-relaxed">{step.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Student CTA */}
+        <section className="py-20 bg-gradient-to-r from-orange-500 to-orange-600">
+          <div className="max-w-4xl mx-auto px-4 text-center">
+            <h2 className="font-heading text-4xl font-bold text-white mb-4">
+              Ready to find your place?
+            </h2>
+            <p className="text-orange-100 text-lg mb-10 max-w-2xl mx-auto">
+              Join thousands of students who found their home through BashaVara.
+              All you need is your .edu email.
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Link
+                href="/register"
+                className="px-8 py-4 bg-white text-orange-500 rounded-xl font-semibold hover:bg-orange-50 transition-colors shadow-lg"
+              >
+                Get started — it&apos;s free
+              </Link>
+              <Link
+                href="/listings"
+                className="px-8 py-4 border-2 border-white/40 text-white rounded-xl font-semibold hover:bg-white/10 transition-colors"
+              >
+                Browse listings
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* Landlord CTA */}
+        <section className="py-20 bg-slate-900">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid lg:grid-cols-2 gap-12 items-center">
+              <div>
+                <span className="inline-flex items-center gap-2 bg-orange-500/20 text-orange-400 text-xs font-semibold px-3 py-1.5 rounded-full mb-6">
+                  <svg
+                    className="w-3.5 h-3.5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                    />
+                  </svg>
+                  For landlords &amp; property managers
+                </span>
+                <h2 className="font-heading text-4xl font-bold text-white leading-tight mb-5">
+                  List your property. Reach verified student renters.
+                </h2>
+                <p className="text-slate-400 text-lg leading-relaxed mb-8">
+                  BashaVara gives landlords direct access to a pre-screened
+                  community of university students. Post listings, manage
+                  inquiries, and connect — all in one place.
+                </p>
+                <div className="flex flex-wrap gap-4">
+                  <Link
+                    href="/register"
+                    className="inline-flex items-center gap-2 px-6 py-3.5 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors"
+                  >
+                    Create landlord account
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 12h14m-7-7 7 7-7 7"
+                      />
+                    </svg>
+                  </Link>
+                  <Link
+                    href="/login"
+                    className="px-6 py-3.5 border border-white/20 text-white rounded-xl font-semibold hover:bg-white/10 transition-colors"
+                  >
+                    Landlord log in
+                  </Link>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                {[
+                  {
+                    icon: "🎯",
+                    title: "Qualified leads only",
+                    desc: "Every inquiry comes from a verified .edu student — no scammers, no wasted time.",
+                  },
+                  {
+                    icon: "📋",
+                    title: "Manage requests",
+                    desc: "Accept or decline applicants from your dashboard. Share contact info when ready.",
+                  },
+                  {
+                    icon: "⭐",
+                    title: "Build trust",
+                    desc: "Student reviews build your reputation as a reliable, responsive landlord.",
+                  },
+                  {
+                    icon: "🆓",
+                    title: "Free to list",
+                    desc: "No broker fees, no listing charges. BashaVara is free for landlords at MVP.",
+                  },
+                ].map((item) => (
+                  <div
+                    key={item.title}
+                    className="bg-white/5 border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-colors"
+                  >
+                    <span className="text-2xl">{item.icon}</span>
+                    <h3 className="font-heading font-semibold text-white text-sm mt-3 mb-1">
+                      {item.title}
+                    </h3>
+                    <p className="text-slate-400 text-xs leading-relaxed">
+                      {item.desc}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
       </div>
     </>
   );

@@ -149,11 +149,11 @@ router.get("/", async (req, res) => {
         COUNT(DISTINCT r.id) AS reviewCount,
         COALESCE(
           (
-            SELECT JSON_ARRAYAGG(la.amenity)
+            SELECT GROUP_CONCAT(la.amenity SEPARATOR ',')
             FROM listing_amenities la
             WHERE la.listing_id = l.id
           ),
-          JSON_ARRAY()
+          ''
         ) AS amenities
       FROM listings l
       JOIN user u ON l.landlord_id = u.id
@@ -179,7 +179,11 @@ router.get("/", async (req, res) => {
         utilityCharge: Number(l.utilityCharge),
         avgRating: Number(Number(l.avgRating).toFixed(1)),
         reviewCount: Number(l.reviewCount),
-        amenities: Array.isArray(l.amenities) ? l.amenities : JSON.parse(l.amenities || "[]"),
+        amenities: typeof l.amenities === "string"
+          ? (l.amenities ? l.amenities.split(",").map((s) => s.trim()).filter(Boolean) : [])
+          : Array.isArray(l.amenities)
+          ? l.amenities
+          : [],
       })),
     });
   } catch (error) {
@@ -218,11 +222,11 @@ router.get("/:id", async (req, res) => {
         COUNT(DISTINCT r.id) AS reviewCount,
         COALESCE(
           (
-            SELECT JSON_ARRAYAGG(la.amenity)
+            SELECT GROUP_CONCAT(la.amenity SEPARATOR ',')
             FROM listing_amenities la
             WHERE la.listing_id = l.id
           ),
-          JSON_ARRAY()
+          ''
         ) AS amenities
       FROM listings l
       JOIN user u ON l.landlord_id = u.id
@@ -261,9 +265,11 @@ router.get("/:id", async (req, res) => {
         utilityCharge: Number(listing.utilityCharge),
         avgRating: Number(Number(listing.avgRating).toFixed(1)),
         reviewCount: Number(listing.reviewCount),
-        amenities: Array.isArray(listing.amenities)
+        amenities: typeof listing.amenities === "string"
+          ? (listing.amenities ? listing.amenities.split(",").map((s) => s.trim()).filter(Boolean) : [])
+          : Array.isArray(listing.amenities)
           ? listing.amenities
-          : JSON.parse(listing.amenities || "[]"),
+          : [],
         reviews,
       },
     });

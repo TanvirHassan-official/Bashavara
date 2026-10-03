@@ -8,7 +8,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 async function runSeed() {
-  const databaseUrl = process.env.DATABASE_URL || "mysql://root:password@localhost:3306/bashavara";
+  const databaseUrl = process.env.DATABASE_URL || "mysql://root:@localhost/bashavara";
   const parsedUrl = new URL(databaseUrl.replace(/^mysql:\/\//, "http://"));
   const databaseName = parsedUrl.pathname.replace(/^\//, "") || "bashavara";
 

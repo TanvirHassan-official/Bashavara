@@ -215,9 +215,13 @@ export default function ListingDetailClient({ listing, reviews: initialReviews =
                   { label: "Bathrooms", value: `${listing.bathrooms} Bath` },
                   {
                     label: "Distance",
-                    value: `${listing.distance} mi to campus`,
+                    value: listing.distance
+                      ? listing.distance.toLowerCase().includes("mi") || listing.distance.toLowerCase().includes("km")
+                        ? `${listing.distance} to campus`
+                        : `${listing.distance} mi to campus`
+                      : "Near campus",
                   },
-                  { label: "Available", value: listing.availableFrom },
+                  { label: "Available", value: listing.availableFrom || "Immediately" },
                 ].map((item) => (
                   <div key={item.label} className="bg-slate-50 rounded-xl p-3">
                     <p className="text-xs text-slate-400 mb-1">{item.label}</p>
@@ -256,7 +260,12 @@ export default function ListingDetailClient({ listing, reviews: initialReviews =
                   Amenities
                 </h3>
                 <div className="flex flex-wrap gap-2">
-                  {listing.amenities.map((a) => (
+                  {(Array.isArray(listing.amenities)
+                    ? listing.amenities
+                    : typeof listing.amenities === "string"
+                    ? listing.amenities.split(",").map((s) => s.trim()).filter(Boolean)
+                    : []
+                  ).map((a) => (
                     <span
                       key={a}
                       className="flex items-center gap-1.5 text-sm text-slate-600 bg-slate-50 px-3 py-1.5 rounded-full"

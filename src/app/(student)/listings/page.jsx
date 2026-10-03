@@ -1,9 +1,11 @@
 import { api } from "@/lib/api";
 import ListingsClient from "./ListingsClient";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = {
-  title: "Listings | BashaVara",
-  description: "Browse available rental listings near your campus",
+  title: "Housing Listings | BashaVara",
+  description: "Browse verified student rental listings near campus",
 };
 
 const DEPARTMENTS = [
@@ -43,13 +45,17 @@ export default async function ListingsPage() {
   const ratings = {};
 
   try {
-    const data = await api.get("/api/listings?status=active");
-    listings = data.listings || [];
+    const data = await api.get("/api/listings?status=active", {
+      cache: "no-store",
+    });
+    listings = Array.isArray(data?.listings) ? data.listings : [];
     for (const item of listings) {
-      ratings[item.id] = item.avgRating || 0;
+      if (item && item.id) {
+        ratings[item.id] = Number(item.avgRating || 0);
+      }
     }
   } catch (error) {
-    console.error("Failed to load listings from API, trying fallback:", error.message);
+    console.error("Failed to load listings in page.jsx:", error.message);
   }
 
   return (
@@ -61,3 +67,4 @@ export default async function ListingsPage() {
     />
   );
 }
+

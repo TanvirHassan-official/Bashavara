@@ -48,43 +48,71 @@ export default function LandlordDashboardClient({
   const [requests, setRequests] = useState(initialRequests);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [actionLoadingId, setActionLoadingId] = useState(null);
   const [actionError, setActionError] = useState(null);
+  const [actionSuccess, setActionSuccess] = useState(null);
 
   const activeCount = listings.filter((l) => (l.status || l.listingStatus) === "active").length;
   const pendingRequests = requests.filter((r) => (r.status || "").toLowerCase() === "pending").length;
   const acceptedCount = requests.filter((r) => (r.status || "").toLowerCase() === "accepted").length;
 
+  function showSuccess(msg) {
+    setActionSuccess(msg);
+    setTimeout(() => {
+      setActionSuccess(null);
+    }, 4000);
+  }
+
   async function toggleListingStatus(id, newStatus) {
     setActionLoading(true);
+    setActionLoadingId(id);
     setActionError(null);
     try {
       await api.patch(`/api/listings/${id}/status`, { status: newStatus });
       setListings((prev) =>
         prev.map((l) => (l.id === id ? { ...l, status: newStatus, listingStatus: newStatus } : l))
       );
+      const statusText =
+        newStatus === "rented"
+          ? "Listing marked as Rented."
+          : newStatus === "active"
+          ? "Listing activated."
+          : "Listing paused.";
+      showSuccess(statusText);
     } catch (err) {
+      console.error("Failed to update listing status:", err);
       setActionError(err.message || "Failed to update listing status.");
     } finally {
       setActionLoading(false);
+      setActionLoadingId(null);
     }
   }
 
-  async function deleteListing(id) {
+  async function deleteListing(target) {
+    const id = typeof target === "object" ? target?.id : target;
+    if (!id) return;
+
     setActionLoading(true);
+    setActionLoadingId(id);
     setActionError(null);
     try {
       await api.delete(`/api/listings/${id}`);
       setListings((prev) => prev.filter((l) => l.id !== id));
+      setRequests((prev) => prev.filter((r) => r.listingId !== id));
       setDeleteConfirm(null);
+      showSuccess("Listing deleted successfully.");
     } catch (err) {
+      console.error("Failed to delete listing:", err);
       setActionError(err.message || "Failed to delete listing.");
     } finally {
       setActionLoading(false);
+      setActionLoadingId(null);
     }
   }
 
   async function updateRequestStatus(id, newStatus) {
     setActionLoading(true);
+    setActionLoadingId(id);
     setActionError(null);
     try {
       const res = await api.patch(`/api/requests/${id}`, { status: newStatus });
@@ -101,10 +129,13 @@ export default function LandlordDashboardClient({
             : r
         )
       );
+      showSuccess(`Request ${newStatus.toLowerCase()} successfully.`);
     } catch (err) {
+      console.error("Failed to update request:", err);
       setActionError(err.message || "Failed to update request.");
     } finally {
       setActionLoading(false);
+      setActionLoadingId(null);
     }
   }
 
@@ -151,6 +182,41 @@ export default function LandlordDashboardClient({
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        {/* Toast / Notification Banners */}
+        {actionSuccess && (
+          <div className="flex items-center justify-between p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-sm font-medium animate-fadeIn">
+            <div className="flex items-center gap-2.5">
+              <svg className="w-5 h-5 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              <span>{actionSuccess}</span>
+            </div>
+            <button
+              onClick={() => setActionSuccess(null)}
+              className="text-emerald-600 hover:text-emerald-800 p-1 font-bold"
+            >
+              ×
+            </button>
+          </div>
+        )}
+
+        {actionError && (
+          <div className="flex items-center justify-between p-4 bg-red-50 border border-red-200 text-red-800 rounded-xl text-sm font-medium animate-fadeIn">
+            <div className="flex items-center gap-2.5">
+              <svg className="w-5 h-5 text-red-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>{actionError}</span>
+            </div>
+            <button
+              onClick={() => setActionError(null)}
+              className="text-red-600 hover:text-red-800 p-1 font-bold"
+            >
+              ×
+            </button>
+          </div>
+        )}
+
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
@@ -238,8 +304,9 @@ export default function LandlordDashboardClient({
           {tab === "listings" ? (
             <ListingsTab
               listings={listings}
+              actionLoadingId={actionLoadingId}
               onToggleStatus={toggleListingStatus}
-              onDelete={(id) => setDeleteConfirm(id)}
+              onDelete={(target) => setDeleteConfirm(target)}
             />
           ) : (
             <RequestsTab
@@ -252,32 +319,46 @@ export default function LandlordDashboardClient({
 
       {/* Delete confirm modal */}
       {deleteConfirm && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl">
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 sm:p-8 max-w-sm w-full shadow-2xl animate-scaleIn">
             <div className="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center mx-auto mb-4">
               <svg className="w-6 h-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
             </div>
-            <h3 className="font-heading font-bold text-slate-900 text-center mb-2">
+            <h3 className="font-heading font-bold text-slate-900 text-center text-lg mb-2">
               Delete this listing?
             </h3>
-            <p className="text-sm text-slate-500 text-center mb-6">
-              This action cannot be undone. All associated requests will also be
-              removed.
+            <p className="text-sm text-slate-600 text-center mb-1 font-medium">
+              {typeof deleteConfirm === "object" ? `"${deleteConfirm.title}"` : "This property"}
+            </p>
+            <p className="text-xs text-slate-400 text-center mb-6">
+              This action cannot be undone. All associated requests and reviews will also be removed.
             </p>
             <div className="flex gap-3">
               <button
+                disabled={actionLoading}
                 onClick={() => setDeleteConfirm(null)}
-                className="flex-1 py-2.5 border border-slate-200 text-slate-600 rounded-xl text-sm hover:bg-slate-50 transition-colors"
+                className="flex-1 py-2.5 border border-slate-200 text-slate-600 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
+                disabled={actionLoading}
                 onClick={() => deleteListing(deleteConfirm)}
-                className="flex-1 py-2.5 bg-red-500 text-white rounded-xl text-sm font-medium hover:bg-red-600 transition-colors"
+                className="flex-1 py-2.5 bg-red-500 text-white rounded-xl text-sm font-semibold hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                Delete
+                {actionLoading ? (
+                  <>
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                    </svg>
+                    Deleting...
+                  </>
+                ) : (
+                  "Delete"
+                )}
               </button>
             </div>
           </div>
@@ -287,7 +368,7 @@ export default function LandlordDashboardClient({
   );
 }
 
-function ListingsTab({ listings, onToggleStatus, onDelete }) {
+function ListingsTab({ listings, actionLoadingId, onToggleStatus, onDelete }) {
   if (listings.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -318,6 +399,7 @@ function ListingsTab({ listings, onToggleStatus, onDelete }) {
         <ListingRow
           key={listing.id}
           listing={listing}
+          isLoading={actionLoadingId === listing.id}
           onToggleStatus={onToggleStatus}
           onDelete={onDelete}
         />
@@ -326,8 +408,18 @@ function ListingsTab({ listings, onToggleStatus, onDelete }) {
   );
 }
 
-function ListingRow({ listing, onToggleStatus, onDelete }) {
+function ListingRow({ listing, isLoading, onToggleStatus, onDelete }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const status = (listing.status || listing.listingStatus || "active").toLowerCase();
+  const statusBadge = STATUS_BADGE[status] || STATUS_BADGE.active;
+  const statusLabel = status ? status.charAt(0).toUpperCase() + status.slice(1) : "Active";
+
+  const rawDist = String(listing.distance || "").trim();
+  const displayDist = rawDist
+    ? rawDist.toLowerCase().includes("mi") || rawDist.toLowerCase().includes("km")
+      ? `${rawDist} to campus`
+      : `${rawDist} mi to campus`
+    : "Near campus";
 
   return (
     <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-5 hover:bg-slate-50/50 transition-colors">
@@ -355,99 +447,162 @@ function ListingRow({ listing, onToggleStatus, onDelete }) {
             {listing.title}
           </p>
           <span
-            className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border ${
-              STATUS_BADGE[listing.listingStatus]
-            }`}
+            className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border ${statusBadge}`}
           >
-            {listing.listingStatus.charAt(0).toUpperCase() +
-              listing.listingStatus.slice(1)}
+            {statusLabel}
           </span>
         </div>
         <p className="text-xs text-slate-400 mb-2">{listing.address}</p>
         <div className="flex flex-wrap gap-3 text-xs text-slate-500">
           <span className="font-semibold text-orange-500">
-            ${listing.rent.toLocaleString()}/mo
+            ${Number(listing.rent || 0).toLocaleString()}/mo
           </span>
           <span>
             {listing.bedrooms === 0 ? "Studio" : `${listing.bedrooms}BR`} ·{" "}
             {listing.bathrooms}BA
           </span>
-          <span>{listing.distance} mi to campus</span>
-          <span>Available {listing.availableFrom}</span>
+          <span>{displayDist}</span>
+          <span>Available {listing.availableFrom || "Immediately"}</span>
         </div>
       </div>
 
-      {/* Rating placeholder */}
+      {/* Rating */}
       <div className="hidden lg:block text-center">
-        <StarRating rating={4.5} size="sm" />
-        <p className="text-xs text-slate-400 mt-1">4.5 (3 reviews)</p>
+        <StarRating rating={Number(listing.avgRating || 0) || 4.5} size="sm" />
+        <p className="text-xs text-slate-400 mt-1">
+          {listing.avgRating ? Number(listing.avgRating).toFixed(1) : "New"}{" "}
+          ({listing.reviewCount || 0} reviews)
+        </p>
       </div>
 
       {/* Actions */}
       <div className="flex items-center gap-2 shrink-0">
-        {listing.listingStatus === "active" ? (
+        {status === "active" ? (
           <button
+            disabled={isLoading}
             onClick={() => onToggleStatus(listing.id, "paused")}
-            className="px-3 py-1.5 text-xs border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors"
+            className="px-3 py-1.5 text-xs font-medium border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
           >
-            Pause
+            {isLoading ? "Updating..." : "Pause"}
           </button>
-        ) : listing.listingStatus === "paused" ? (
+        ) : status === "paused" ? (
           <button
+            disabled={isLoading}
             onClick={() => onToggleStatus(listing.id, "active")}
-            className="px-3 py-1.5 text-xs border border-green-200 rounded-lg text-green-600 bg-green-50 hover:bg-green-100 transition-colors"
+            className="px-3 py-1.5 text-xs font-medium border border-green-200 rounded-lg text-green-600 bg-green-50 hover:bg-green-100 transition-colors disabled:opacity-50"
           >
-            Activate
+            {isLoading ? "Updating..." : "Activate"}
           </button>
         ) : (
           <button
+            disabled={isLoading}
             onClick={() => onToggleStatus(listing.id, "active")}
-            className="px-3 py-1.5 text-xs border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 transition-colors"
+            className="px-3 py-1.5 text-xs font-medium border border-orange-200 rounded-lg text-orange-600 bg-orange-50 hover:bg-orange-100 transition-colors disabled:opacity-50"
           >
-            Re-list
+            {isLoading ? "Updating..." : "Re-list"}
           </button>
         )}
 
+        {/* 3-dots Menu */}
         <div className="relative">
           <button
             onClick={() => setMenuOpen(!menuOpen)}
-            className="p-2 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors"
+            className="p-2 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
           >
             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
               <path d="M6 10a2 2 0 11-4 0 2 2 0 014 0zM12 10a2 2 0 11-4 0 2 2 0 014 0zM16 12a2 2 0 100-4 2 2 0 000 4z" />
             </svg>
           </button>
+
           {menuOpen && (
             <>
               <div
                 className="fixed inset-0 z-10"
                 onClick={() => setMenuOpen(false)}
               />
-              <div className="absolute right-0 mt-1 w-40 bg-white rounded-xl border border-slate-100 shadow-lg py-1 z-20">
+              <div className="absolute right-0 mt-1 w-48 bg-white rounded-xl border border-slate-100 shadow-xl py-1.5 z-20">
                 <Link
                   href={`/landlord/listings/${listing.id}/edit`}
                   onClick={() => setMenuOpen(false)}
-                  className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 block"
+                  className="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2"
                 >
+                  <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
                   Edit listing
                 </Link>
-                <button
-                  onClick={() => {
-                    onToggleStatus(listing.id, "rented");
-                    setMenuOpen(false);
-                  }}
-                  className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
-                >
-                  Mark as rented
-                </button>
+
+                {/* Mark as Rented or Mark as Available */}
+                {status !== "rented" ? (
+                  <button
+                    onClick={() => {
+                      onToggleStatus(listing.id, "rented");
+                      setMenuOpen(false);
+                    }}
+                    className="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                  >
+                    <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                    </svg>
+                    Mark as rented
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      onToggleStatus(listing.id, "active");
+                      setMenuOpen(false);
+                    }}
+                    className="w-full text-left px-4 py-2 text-xs font-medium text-emerald-600 hover:bg-emerald-50 flex items-center gap-2"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Mark as available (Active)
+                  </button>
+                )}
+
+                {/* Status Toggle helper in menu */}
+                {status === "active" && (
+                  <button
+                    onClick={() => {
+                      onToggleStatus(listing.id, "paused");
+                      setMenuOpen(false);
+                    }}
+                    className="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                  >
+                    <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6" />
+                    </svg>
+                    Pause listing
+                  </button>
+                )}
+
+                {status === "paused" && (
+                  <button
+                    onClick={() => {
+                      onToggleStatus(listing.id, "active");
+                      setMenuOpen(false);
+                    }}
+                    className="w-full text-left px-4 py-2 text-xs font-medium text-emerald-600 hover:bg-emerald-50 flex items-center gap-2"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                    </svg>
+                    Activate listing
+                  </button>
+                )}
+
                 <div className="border-t border-slate-100 mt-1 pt-1">
                   <button
                     onClick={() => {
-                      onDelete(listing.id);
+                      onDelete(listing);
                       setMenuOpen(false);
                     }}
-                    className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-50"
+                    className="w-full text-left px-4 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 flex items-center gap-2"
                   >
+                    <svg className="w-3.5 h-3.5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
                     Delete listing
                   </button>
                 </div>
@@ -517,10 +672,20 @@ function RequestsTab({ requestsByListing, onUpdateStatus }) {
 }
 
 function RequestRow({ req, onUpdateStatus }) {
-  const initials = req.senderName
+  const initials = (req.senderName || "S")
     .split(" ")
     .map((n) => n[0])
+    .filter(Boolean)
     .join("");
+
+  const statusKey = (req.status || "Pending").toLowerCase();
+  const badgeClass =
+    REQ_BADGE[req.status] ||
+    REQ_BADGE[statusKey] ||
+    "bg-amber-50 text-amber-600 border-amber-200";
+  const icon = REQ_ICONS[req.status] || REQ_ICONS[statusKey] || REQ_ICONS.pending;
+  const statusLabel =
+    statusKey.charAt(0).toUpperCase() + statusKey.slice(1);
 
   return (
     <div className="flex flex-col sm:flex-row sm:items-center gap-4 px-6 py-4 hover:bg-slate-50/50 transition-colors">
@@ -531,48 +696,48 @@ function RequestRow({ req, onUpdateStatus }) {
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <p className="text-sm font-semibold text-slate-800">
-              {req.senderName}
+              {req.senderName || "Student"}
             </p>
             <span
-              className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border ${
-                REQ_BADGE[req.status]
-              }`}
+              className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border ${badgeClass}`}
             >
-              {REQ_ICONS[req.status]}
-              {req.status}
+              {icon}
+              {statusLabel}
             </span>
           </div>
-          {req.status === "Accepted" ? (
+          {statusKey === "accepted" ? (
             <div className="flex items-center gap-1.5 mt-0.5">
               <svg className="w-3.5 h-3.5 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
               <p className="text-xs text-green-700 font-medium">
-                {req.senderEmail}
+                {req.senderEmail || "Email shared"}
               </p>
             </div>
           ) : (
             <p className="text-xs text-slate-400 mt-0.5">
               Requested{" "}
-              {new Date(req.createdAt).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-              })}
+              {req.createdAt
+                ? new Date(req.createdAt).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                  })
+                : "recently"}
             </p>
           )}
         </div>
       </div>
 
-      {req.status === "Pending" && (
+      {statusKey === "pending" && (
         <div className="flex gap-2 shrink-0">
           <button
-            onClick={() => onUpdateStatus(req.id, "Rejected")}
+            onClick={() => onUpdateStatus(req.id, "rejected")}
             className="px-4 py-2 border border-slate-200 text-slate-600 text-sm rounded-xl hover:bg-slate-50 transition-colors"
           >
             Decline
           </button>
           <button
-            onClick={() => onUpdateStatus(req.id, "Accepted")}
+            onClick={() => onUpdateStatus(req.id, "accepted")}
             className="px-4 py-2 bg-orange-500 text-white text-sm font-medium rounded-xl hover:bg-orange-600 transition-colors"
           >
             Accept

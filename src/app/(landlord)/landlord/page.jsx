@@ -3,6 +3,8 @@ import { getSession } from "@/lib/session";
 import { api } from "@/lib/api";
 import LandlordDashboardClient from "./LandlordDashboardClient";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "Landlord Dashboard | BashaVara",
   description: "Manage your listings and student requests",
@@ -24,12 +26,16 @@ export default async function LandlordDashboardPage() {
 
   try {
     const [listingsRes, requestsRes] = await Promise.all([
-      api.get(`/api/listings?landlordId=${sessionData.user.id}&status=all`),
-      api.get("/api/requests/incoming"),
+      api.get(`/api/listings?landlordId=${sessionData.user.id}&status=all`, {
+        cache: "no-store",
+      }),
+      api.get("/api/requests/incoming", {
+        cache: "no-store",
+      }),
     ]);
 
-    listings = listingsRes.listings || [];
-    requests = requestsRes.requests || [];
+    listings = listingsRes?.listings || [];
+    requests = requestsRes?.requests || [];
   } catch (error) {
     console.error("Failed to load landlord dashboard data:", error.message);
   }
