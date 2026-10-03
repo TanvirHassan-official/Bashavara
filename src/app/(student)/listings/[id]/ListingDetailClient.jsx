@@ -24,7 +24,7 @@ export default function ListingDetailClient({ listing, reviews: initialReviews =
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
 
   async function handleRequest() {
-    if (!session?.user) {
+    if (!session) {
       router.push("/login");
       return;
     }
@@ -46,7 +46,7 @@ export default function ListingDetailClient({ listing, reviews: initialReviews =
   }
 
   function handleOpenReviewForm() {
-    if (!session?.user) {
+    if (!session) {
       router.push("/login");
       return;
     }
@@ -55,7 +55,7 @@ export default function ListingDetailClient({ listing, reviews: initialReviews =
 
   async function handleReviewSubmit(e) {
     e.preventDefault();
-    if (!session?.user) {
+    if (!session) {
       router.push("/login");
       return;
     }
@@ -75,8 +75,8 @@ export default function ListingDetailClient({ listing, reviews: initialReviews =
         id: `rev_${Date.now()}`,
         rating: reviewRating,
         comment: reviewComment,
-        reviewerId: session.user.id,
-        reviewerName: session.user.name || "Student",
+        reviewerId: session.id,
+        reviewerName: session.name || "Student",
         createdAt: new Date().toISOString(),
       };
 
@@ -239,8 +239,8 @@ export default function ListingDetailClient({ listing, reviews: initialReviews =
                     {avgRating.toFixed(1)}
                   </span>
                   <span className="text-slate-400 text-sm">
-                    ({reviews.length} review
-                    {reviews.length !== 1 ? "s" : ""})
+                    ({reviewsList.length} review
+                    {reviewsList.length !== 1 ? "s" : ""})
                   </span>
                 </div>
               )}
@@ -263,8 +263,8 @@ export default function ListingDetailClient({ listing, reviews: initialReviews =
                   {(Array.isArray(listing.amenities)
                     ? listing.amenities
                     : typeof listing.amenities === "string"
-                    ? listing.amenities.split(",").map((s) => s.trim()).filter(Boolean)
-                    : []
+                      ? listing.amenities.split(",").map((s) => s.trim()).filter(Boolean)
+                      : []
                   ).map((a) => (
                     <span
                       key={a}
@@ -297,7 +297,7 @@ export default function ListingDetailClient({ listing, reviews: initialReviews =
               </div>
             </div>
 
-              {/* Reviews */}
+            {/* Reviews */}
             <div className="bg-white rounded-2xl border border-slate-100 p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="font-heading font-semibold text-slate-900 text-lg">

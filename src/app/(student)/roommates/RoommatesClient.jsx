@@ -84,10 +84,7 @@ export default function RoommatesClient({ currentUser, users }) {
   }
 
   async function handleRequest(userId) {
-    if (!session?.user) {
-      router.push("/login");
-      return;
-    }
+    if (!session) { router.push("/login"); return; }
     setRequestLoading((prev) => ({ ...prev, [userId]: true }));
     setRequestError((prev) => ({ ...prev, [userId]: null }));
     try {
@@ -124,11 +121,10 @@ export default function RoommatesClient({ currentUser, users }) {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-colors capitalize ${
-                activeTab === tab
-                  ? "bg-white text-slate-900 shadow-sm"
-                  : "text-slate-500"
-              }`}
+              className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-colors capitalize ${activeTab === tab
+                ? "bg-white text-slate-900 shadow-sm"
+                : "text-slate-500"
+                }`}
             >
               {tab === "matches"
                 ? `Matches (${matches.length})`
@@ -140,9 +136,8 @@ export default function RoommatesClient({ currentUser, users }) {
         <div className="flex gap-8">
           {/* Profile sidebar */}
           <aside
-            className={`${
-              activeTab === "profile" ? "block" : "hidden"
-            } lg:block w-full lg:w-80 shrink-0`}
+            className={`${activeTab === "profile" ? "block" : "hidden"
+              } lg:block w-full lg:w-80 shrink-0`}
           >
             <div className="bg-white rounded-2xl border border-slate-100 p-6 space-y-6 lg:sticky lg:top-20 shadow-sm">
               <div className="text-center pb-5 border-b border-slate-50">
@@ -206,17 +201,16 @@ export default function RoommatesClient({ currentUser, users }) {
                         key={s}
                         type="button"
                         onClick={() => setSleep(s)}
-                        className={`flex-1 py-2 text-xs rounded-lg border transition-colors ${
-                          sleep === s
-                            ? "border-orange-500 bg-orange-50 text-orange-600 font-medium"
-                            : "border-slate-200 text-slate-500 hover:border-orange-200"
-                        }`}
+                        className={`flex-1 py-2 text-xs rounded-lg border transition-colors ${sleep === s
+                          ? "border-orange-500 bg-orange-50 text-orange-600 font-medium"
+                          : "border-slate-200 text-slate-500 hover:border-orange-200"
+                          }`}
                       >
                         {s === "Early Bird"
                           ? "🌅"
                           : s === "Night Owl"
-                          ? "🦉"
-                          : "🔄"}{" "}
+                            ? "🦉"
+                            : "🔄"}{" "}
                         {s.split(" ")[0]}
                       </button>
                     ))}
@@ -234,11 +228,10 @@ export default function RoommatesClient({ currentUser, users }) {
                         key={s}
                         type="button"
                         onClick={() => setSmoking(s)}
-                        className={`flex-1 py-2 text-xs rounded-lg border transition-colors ${
-                          smoking === s
-                            ? "border-orange-500 bg-orange-50 text-orange-600 font-medium"
-                            : "border-slate-200 text-slate-500 hover:border-orange-200"
-                        }`}
+                        className={`flex-1 py-2 text-xs rounded-lg border transition-colors ${smoking === s
+                          ? "border-orange-500 bg-orange-50 text-orange-600 font-medium"
+                          : "border-slate-200 text-slate-500 hover:border-orange-200"
+                          }`}
                       >
                         {s}
                       </button>
@@ -285,9 +278,8 @@ export default function RoommatesClient({ currentUser, users }) {
 
           {/* Matches list */}
           <div
-            className={`${
-              activeTab === "matches" ? "block" : "hidden"
-            } lg:block flex-1 min-w-0`}
+            className={`${activeTab === "matches" ? "block" : "hidden"
+              } lg:block flex-1 min-w-0`}
           >
             <div className="flex items-center justify-between mb-5">
               <h2 className="font-heading font-semibold text-slate-900">
@@ -336,8 +328,8 @@ function RoommateCard({ user, score, requestSent, requestLoading, requestError, 
   const scoreBadge = isHigh
     ? "bg-green-50 text-green-700 border-green-200"
     : isMid
-    ? "bg-amber-50 text-amber-700 border-amber-200"
-    : "bg-slate-50 text-slate-600 border-slate-200";
+      ? "bg-amber-50 text-amber-700 border-amber-200"
+      : "bg-slate-50 text-slate-600 border-slate-200";
 
   return (
     <div className="bg-white rounded-2xl border border-slate-100 p-5 flex flex-col justify-between hover:border-orange-200 hover:shadow-md transition-all">

@@ -221,41 +221,6 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* Features */}
-        <section className="py-24">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-16">
-              <h2 className="font-heading text-4xl font-bold text-slate-900 mb-4">
-                Everything you need, nothing you don&apos;t
-              </h2>
-              <p className="text-lg text-slate-500 max-w-2xl mx-auto">
-                BashaVara is purpose-built for students. We stripped out
-                complexity and focused on what actually matters when you are
-                finding a place to live.
-              </p>
-            </div>
-
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {FEATURES.map((f) => (
-                <div
-                  key={f.title}
-                  className="group p-6 rounded-2xl border border-slate-100 hover:border-orange-200 hover:bg-orange-50/30 transition-all duration-200"
-                >
-                  <div className="w-12 h-12 bg-orange-50 text-orange-500 rounded-xl flex items-center justify-center mb-5 group-hover:bg-orange-100 transition-colors">
-                    {f.icon}
-                  </div>
-                  <h3 className="font-heading text-lg font-semibold text-slate-900 mb-2">
-                    {f.title}
-                  </h3>
-                  <p className="text-sm text-slate-500 leading-relaxed">
-                    {f.desc}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
         {/* Recent listings preview */}
         {recentListings.length > 0 && (
           <section className="py-16 bg-slate-50">
@@ -357,31 +322,35 @@ export default async function HomePage() {
           </section>
         )}
 
-        {/* How it works */}
+        {/* Features */}
         <section className="py-24">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-16">
               <h2 className="font-heading text-4xl font-bold text-slate-900 mb-4">
-                How it works
+                Everything you need, nothing you don&apos;t
               </h2>
-              <p className="text-lg text-slate-500">
-                Three steps to your next home
+              <p className="text-lg text-slate-500 max-w-2xl mx-auto">
+                BashaVara is purpose-built for students. We stripped out
+                complexity and focused on what actually matters when you are
+                finding a place to live.
               </p>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-8 relative">
-              <div className="hidden md:block absolute top-8 left-[16.67%] right-[16.67%] h-px bg-gradient-to-r from-orange-200 via-orange-300 to-orange-200" />
-              {STEPS.map((step) => (
-                <div key={step.step} className="relative text-center px-6">
-                  <div className="w-16 h-16 bg-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-orange-100">
-                    <span className="font-heading text-white font-bold text-lg">
-                      {step.step}
-                    </span>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {FEATURES.map((f) => (
+                <div
+                  key={f.title}
+                  className="group p-6 rounded-2xl border border-slate-100 hover:border-orange-200 hover:bg-orange-50/30 transition-all duration-200"
+                >
+                  <div className="w-12 h-12 bg-orange-50 text-orange-500 rounded-xl flex items-center justify-center mb-5 group-hover:bg-orange-100 transition-colors">
+                    {f.icon}
                   </div>
-                  <h3 className="font-heading text-xl font-semibold text-slate-900 mb-3">
-                    {step.title}
+                  <h3 className="font-heading text-lg font-semibold text-slate-900 mb-2">
+                    {f.title}
                   </h3>
-                  <p className="text-slate-500 leading-relaxed">{step.desc}</p>
+                  <p className="text-sm text-slate-500 leading-relaxed">
+                    {f.desc}
+                  </p>
                 </div>
               ))}
             </div>
@@ -414,6 +383,39 @@ export default async function HomePage() {
             </div>
           </div>
         </section>
+
+        {/* How it works */}
+        <section className="py-24">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-16">
+              <h2 className="font-heading text-4xl font-bold text-slate-900 mb-4">
+                How it works
+              </h2>
+              <p className="text-lg text-slate-500">
+                Three steps to your next home
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-8 relative">
+              <div className="hidden md:block absolute top-8 left-[16.67%] right-[16.67%] h-px bg-gradient-to-r from-orange-200 via-orange-300 to-orange-200" />
+              {STEPS.map((step) => (
+                <div key={step.step} className="relative text-center px-6">
+                  <div className="w-16 h-16 bg-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-orange-100">
+                    <span className="font-heading text-white font-bold text-lg">
+                      {step.step}
+                    </span>
+                  </div>
+                  <h3 className="font-heading text-xl font-semibold text-slate-900 mb-3">
+                    {step.title}
+                  </h3>
+                  <p className="text-slate-500 leading-relaxed">{step.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+
 
         {/* Landlord CTA */}
         <section className="py-20 bg-slate-900">
