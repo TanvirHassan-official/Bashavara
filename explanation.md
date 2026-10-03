@@ -365,3 +365,76 @@ All frontend API calls go through **[`src/lib/api.js`](file:///f:/BashaVara%20-%
 | [`LandlordDashboardClient.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(landlord)/landlord/LandlordDashboardClient.jsx) | `PATCH /api/listings/:id/status`, `DELETE /api/listings/:id`, `PATCH /api/requests/:id` |
 | [`(landlord)/landlord/listings/[id]/edit/page.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/app/(landlord)/landlord/listings/%5Bid%5D/edit/page.jsx) | `GET /api/listings/:id` |
 | [`CreateListingClient.jsx`](file:///f:/BashaVara%20-%20Web/bashavara/src/components/CreateListingClient.jsx) | `POST /api/listings`, `PATCH /api/listings/:id` |
+
+## 10. Repository File Map
+
+This section summarizes the main project files and what each is responsible for. Generated folders such as `node_modules/` and `.next/` are omitted.
+
+### Frontend (`src/`)
+
+| File(s) | Purpose |
+|---|---|
+| `app/page.jsx` | Home page; loads platform statistics and recent listings. |
+| `app/layout.jsx` | Root page layout, fonts, metadata, global styles, and footer. |
+| `app/globals.css` | Global styles and Tailwind/DaisyUI theme styling. |
+| `app/loading.jsx`, `app/error.jsx`, `app/not-found.jsx` | Shared loading, error, and not-found UI. |
+| `app/favicon.ico` | Browser tab icon. |
+| `app/(auth)/layout.jsx` | Shared layout for authentication pages. |
+| `app/(auth)/login/page.jsx`, `app/(auth)/register/page.jsx` | Login and registration pages. |
+| `app/(student)/layout.jsx` | Student section layout and access checks. |
+| `app/(student)/dashboard/page.jsx`, `DashboardClient.jsx` | Student dashboard data loading and interactive UI. |
+| `app/(student)/listings/page.jsx`, `ListingsClient.jsx` | Listing browse page and interactive filters/results. |
+| `app/(student)/listings/[id]/page.jsx`, `ListingDetailClient.jsx` | Listing detail page and interactive contact/review actions. |
+| `app/(student)/roommates/page.jsx`, `RoommatesClient.jsx` | Roommate matching page and interactive profile/matching UI. |
+| `app/(landlord)/layout.jsx` | Landlord section layout and access checks. |
+| `app/(landlord)/landlord/page.jsx`, `LandlordDashboardClient.jsx` | Landlord dashboard data loading and interactive listing/request management. |
+| `app/(landlord)/landlord/listings/new/page.jsx` | New listing page. |
+| `app/(landlord)/landlord/listings/[id]/edit/page.jsx` | Existing listing edit page. |
+| `components/Navbar.jsx`, `Footer.jsx` | Shared site navigation and footer. |
+| `components/LoginForm.jsx`, `RegisterForm.jsx` | Authentication form UI and actions. |
+| `components/CreateListingClient.jsx` | Listing create/edit form. |
+| `components/StarRating.jsx` | Star rating display/input component. |
+| `hooks/useSession.js` | Client hook for reading and refreshing session state. |
+| `lib/api.js` | Shared frontend helper for calling the backend API. |
+| `lib/auth-client.js` | Better Auth browser client configuration. |
+| `lib/session.js` | Server-side session helper used by pages/layouts. |
+
+### Backend (`bashavara-api/`)
+
+| File(s) | Purpose |
+|---|---|
+| `index.js` | Express API entry point: middleware, auth handler, route mounting, error handling, and server startup. |
+| `auth.js` | Better Auth server configuration. |
+| `db.js` | MySQL connection and database initialization helpers. |
+| `middleware/auth.js` | Authentication and role authorization middleware. |
+| `routes/listings.js` | Listing API endpoints. |
+| `routes/requests.js` | Contact and connection request endpoints. |
+| `routes/reviews.js` | Listing review endpoints. |
+| `routes/roommates.js` | Roommate profile and matching endpoints. |
+| `routes/stats.js` | Platform statistics endpoint. |
+| `schema.sql` | MySQL table and schema definitions. |
+| `migrate.js` | Applies the database schema. |
+| `seed.js`, `seed.sql` | Inserts sample/demo database records. |
+| `generate-seed.js` | Generates seed data. |
+| `test-flow.js` | Script for exercising an application flow. |
+| `package.json` | Backend dependencies and npm scripts. |
+| `Procfile`, `railway.json`, `render.yaml` | Hosting/deployment configuration for supported platforms. |
+| `.env.example` | Backend environment-variable template. |
+
+### Root configuration and static assets
+
+| File(s) | Purpose |
+|---|---|
+| `package.json`, `package-lock.json` | Frontend dependencies, scripts, and locked dependency versions. |
+| `next.config.mjs` | Next.js configuration. |
+| `jsconfig.json` | JavaScript tooling settings and import aliases. |
+| `eslint.config.mjs` | ESLint configuration. |
+| `postcss.config.mjs` | PostCSS and Tailwind CSS processing setup. |
+| `vercel.json` | Vercel deployment configuration. |
+| `.gitignore` | Excludes generated, local, or sensitive files from Git. |
+| `.env`, `.env.example` | Local environment settings and frontend environment template. |
+| `README.md` | Project overview, setup, and deployment instructions. |
+| `explanation.md` | Detailed architecture, API endpoint, and repository file reference. |
+| `public/data.json` | Static JSON file served by the frontend. |
+| `public/hero-housing.jpg` | Homepage housing image. |
+| `public/*.svg` | Static SVG graphics and framework icons. |
